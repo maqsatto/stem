@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.assessment import Assessment, AssessmentAttempt
 from app.models.classroom import (
     Assignment,
     Classroom,
@@ -12,9 +13,9 @@ from app.models.classroom import (
     Submission,
 )
 from app.models.content import Competency
-from app.models.enums import AssignmentStatus, SubmissionStatus
+from app.models.enums import AssignmentStatus, AttemptStatus, SubmissionStatus
 from app.models.user import User
-from app.services.scoring import student_comparisons, student_progress
+from app.services.scoring import student_comparisons, student_progress, weighted_overall
 
 
 def class_students(db: Session, classroom: Classroom) -> list[User]:
@@ -67,8 +68,34 @@ def build_class_results(db: Session, classroom: Classroom) -> dict:
     post_overall: dict[uuid.UUID, float] = {}
 
     for student in students:
-        comparisons = student_comparisons(db, student.id)
+        comparisons = student_comparisons(db, student.id, assignment_ids)
         if not comparisons:
+            # Show an individual baseline even when no comparable pair exists.
+            # Never infer a delta from assessments with different methodologies.
+            latest = db.execute(
+                select(AssessmentAttempt)
+                .join(Assessment, Assessment.id == AssessmentAttempt.assessment_id)
+                .where(
+                    AssessmentAttempt.student_id == student.id,
+                    AssessmentAttempt.assignment_id.in_(assignment_ids),
+                    AssessmentAttempt.status == AttemptStatus.submitted.value,
+                    Assessment.kind.in_(["pre", "post"]),
+                )
+                .order_by(AssessmentAttempt.submitted_at.desc(), AssessmentAttempt.id)
+            ).scalars().first()
+            if latest:
+                scores = [
+                    {"competency_id": item.competency_id, "percent": item.percent}
+                    for item in latest.competency_scores
+                ]
+                by_slug = {item.competency.slug: item.percent for item in latest.competency_scores}
+                overall = weighted_overall(scores, latest.assessment.scoring_config_json)
+                if latest.assessment.kind == "pre":
+                    pre_by_student[student.id] = by_slug
+                    pre_overall[student.id] = overall
+                else:
+                    post_by_student[student.id] = by_slug
+                    post_overall[student.id] = overall
             continue
         comparison = comparisons[0]
         pre_scores: dict[str, float] = {}
@@ -97,9 +124,9 @@ def build_class_results(db: Session, classroom: Classroom) -> dict:
                 "student_id": student.id,
                 "display_name": student.display_name,
                 "lessons_completed": progress["lessons_completed"],
-                "tasks_submitted": progress["tasks_submitted"],
-                "tasks_reviewed": progress["tasks_reviewed"],
-                "average_grade": progress["average_grade"],
+                "tasks_submitted": len(student_submissions),
+                "tasks_reviewed": len(reviewed),
+                "average_grade": round(sum(grades) / len(grades), 2) if grades else None,
                 "pre_scores": pre_by_student.get(student.id, {}),
                 "post_scores": post_by_student.get(student.id, {}),
                 "delta_pp": delta_by_student.get(student.id, {}),
@@ -130,6 +157,16 @@ def build_class_results(db: Session, classroom: Classroom) -> dict:
             for item in student_payloads
             if competency.slug in item["delta_pp"]
         ]
+        paired_pre_values = [
+            item["pre_scores"][competency.slug]
+            for item in student_payloads
+            if competency.slug in item["delta_pp"]
+        ]
+        paired_post_values = [
+            item["post_scores"][competency.slug]
+            for item in student_payloads
+            if competency.slug in item["delta_pp"]
+        ]
         averages.append(
             {
                 "competency_id": str(competency.id),
@@ -142,6 +179,10 @@ def build_class_results(db: Session, classroom: Classroom) -> dict:
                 "delta_average_pp": round(sum(delta_values) / len(delta_values), 2)
                 if delta_values
                 else None,
+                "paired_pre_average": round(sum(paired_pre_values) / len(paired_pre_values), 2)
+                if paired_pre_values else None,
+                "paired_post_average": round(sum(paired_post_values) / len(paired_post_values), 2)
+                if paired_post_values else None,
                 "students_with_pre": len(pre_values),
                 "students_with_post": len(post_values),
             }

@@ -34,22 +34,31 @@ fi
 POSTGRES_USER="${POSTGRES_USER:-mlstem}"
 POSTGRES_DB="${POSTGRES_DB:-mlstem}"
 
+umask 077
+TEMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TEMP_DIR"' EXIT HUP INT TERM
+echo "Validating backup archives..."
+gunzip -c "$DB_DUMP" > "$TEMP_DIR/database.dump"
+if [ -n "$UPLOADS_TAR" ]; then
+    tar -tzf "$UPLOADS_TAR" > /dev/null
+fi
+docker compose exec -T db pg_restore --list < "$TEMP_DIR/database.dump" > /dev/null
+
 echo "Stopping backend to avoid writes during restore..."
 docker compose stop backend
 
 echo "Restoring database ${POSTGRES_DB} from ${DB_DUMP}..."
-gunzip -c "$DB_DUMP" | docker compose exec -T db pg_restore \
+docker compose exec -T db pg_restore \
     -U "$POSTGRES_USER" \
     -d "$POSTGRES_DB" \
-    --clean --if-exists --no-owner
-
-echo "Starting backend..."
-docker compose start backend
+    --clean --if-exists --no-owner --exit-on-error < "$TEMP_DIR/database.dump"
 
 if [ -n "$UPLOADS_TAR" ]; then
     echo "Restoring uploads from ${UPLOADS_TAR}..."
-    docker compose exec -T backend tar -xzf - -C /app < "$UPLOADS_TAR"
-    docker compose restart backend
+    docker compose run -T --rm --no-deps --entrypoint tar backend -xzf - -C /app < "$UPLOADS_TAR"
 fi
+
+echo "Starting backend..."
+docker compose start backend
 
 echo "Restore finished. Verify /health and a few key pages before announcing the restore."

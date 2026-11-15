@@ -129,9 +129,10 @@ def weighted_overall(scores: list[dict], config: dict | None) -> float:
 
 
 def first_completed_attempt(
-    db: Session, assessment_id: uuid.UUID, student_id: uuid.UUID
+    db: Session, assessment_id: uuid.UUID, student_id: uuid.UUID,
+    assignment_ids: list[uuid.UUID] | None = None,
 ) -> AssessmentAttempt | None:
-    return db.execute(
+    query = (
         select(AssessmentAttempt)
         .where(
             AssessmentAttempt.assessment_id == assessment_id,
@@ -139,7 +140,10 @@ def first_completed_attempt(
             AssessmentAttempt.status == AttemptStatus.submitted.value,
         )
         .order_by(AssessmentAttempt.submitted_at.asc())
-    ).scalars().first()
+    )
+    if assignment_ids is not None:
+        query = query.where(AssessmentAttempt.assignment_id.in_(assignment_ids))
+    return db.execute(query).scalars().first()
 
 
 def _score_payload(attempt: AssessmentAttempt) -> list[dict]:
@@ -160,7 +164,8 @@ def _score_payload(attempt: AssessmentAttempt) -> list[dict]:
 
 
 def build_comparison(
-    db: Session, student_id: uuid.UUID, methodology_key: str, version: int
+    db: Session, student_id: uuid.UUID, methodology_key: str, version: int,
+    assignment_ids: list[uuid.UUID] | None = None,
 ) -> dict | None:
     assessments = db.execute(
         select(Assessment).where(
@@ -174,8 +179,8 @@ def build_comparison(
     post = next((item for item in assessments if item.kind == AssessmentKind.post.value), None)
     if pre is None or post is None:
         return None
-    pre_attempt = first_completed_attempt(db, pre.id, student_id)
-    post_attempt = first_completed_attempt(db, post.id, student_id)
+    pre_attempt = first_completed_attempt(db, pre.id, student_id, assignment_ids)
+    post_attempt = first_completed_attempt(db, post.id, student_id, assignment_ids)
     if pre_attempt is None or post_attempt is None:
         return None
 
@@ -223,7 +228,9 @@ def build_comparison(
     }
 
 
-def student_comparisons(db: Session, student_id: uuid.UUID) -> list[dict]:
+def student_comparisons(
+    db: Session, student_id: uuid.UUID, assignment_ids: list[uuid.UUID] | None = None
+) -> list[dict]:
     keys = db.execute(
         select(Assessment.methodology_key, Assessment.version)
         .where(
@@ -234,7 +241,7 @@ def student_comparisons(db: Session, student_id: uuid.UUID) -> list[dict]:
     ).all()
     comparisons = []
     for methodology_key, version in keys:
-        comparison = build_comparison(db, student_id, methodology_key, version)
+        comparison = build_comparison(db, student_id, methodology_key, version, assignment_ids)
         if comparison:
             comparisons.append(comparison)
     return comparisons

@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import FileResponse, RedirectResponse
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_optional_user, require_roles
@@ -218,7 +218,7 @@ def list_tasks(
     lesson_id: uuid.UUID | None = None,
     difficulty: str | None = None,
     type: str | None = None,
-    sort: str = Query(default="order", pattern="^(order|difficulty|title)$"),
+    sort: str = Query(default="order", pattern="^(order|difficulty|title|date)$"),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_user),
 ):
@@ -236,7 +236,12 @@ def list_tasks(
     if competency_id:
         query = query.where(Task.competency_links.any(TaskCompetency.competency_id == competency_id))
     if sort == "difficulty":
-        query = query.order_by(Task.difficulty, Task.title)
+        query = query.order_by(
+            case((Task.difficulty == "easy", 0), (Task.difficulty == "medium", 1),
+                 (Task.difficulty == "hard", 2), else_=3), Task.title, Task.id
+        )
+    elif sort == "date":
+        query = query.order_by(Task.created_at.desc(), Task.id)
     elif sort == "title":
         query = query.order_by(Task.title)
     else:

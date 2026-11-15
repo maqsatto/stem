@@ -15,6 +15,7 @@ export function QuizForm({
   questions,
   initialValues,
   onSubmit,
+  onSave,
   submitting = false,
   submitLabel = "Жауаптарды жіберу",
   disabled = false,
@@ -22,18 +23,22 @@ export function QuizForm({
   questions: AssessmentQuestion[];
   initialValues?: QuizInitialValues;
   onSubmit: (answers: QuizAnswer[]) => Promise<void> | void;
+  onSave?: (answers: QuizAnswer[]) => Promise<void> | void;
   submitting?: boolean;
   submitLabel?: string;
   disabled?: boolean;
 }) {
   const [values, setValues] = useState<QuizInitialValues>(() => initialValues ?? {});
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   function selected(questionId: string): string[] {
     return values[questionId]?.selected ?? [];
   }
 
   function setSelected(questionId: string, next: string[]) {
+    setSaved(false);
     setValues((current) => ({
       ...current,
       [questionId]: { ...current[questionId], selected: next },
@@ -55,6 +60,7 @@ export function QuizForm({
   }
 
   function setText(questionId: string, text: string) {
+    setSaved(false);
     setValues((current) => ({
       ...current,
       [questionId]: { ...current[questionId], selected: [], text },
@@ -66,6 +72,33 @@ export function QuizForm({
     if (question.type === "open_text") return Boolean(value?.text?.trim());
     return Boolean(value?.selected.length);
   }).length;
+
+  function collectAnswers(): QuizAnswer[] {
+    return questions.map((question) => {
+      const value = values[question.id];
+      return {
+        question_id: question.id,
+        answer_json: question.type === "open_text"
+          ? { text: value?.text ?? "" }
+          : { selected_option_ids: value?.selected ?? [] },
+      };
+    });
+  }
+
+  async function saveDraft() {
+    if (!onSave) return;
+    setError(null);
+    setSaved(false);
+    setSaving(true);
+    try {
+      await onSave(collectAnswers());
+      setSaved(true);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Жауаптарды сақтау мүмкін болмады.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -79,18 +112,8 @@ export function QuizForm({
       setError("Барлық сұраққа жауап беріңіз. Жауапсыз қалған сұрақтар бар.");
       return;
     }
-    const answers: QuizAnswer[] = questions.map((question) => {
-      const value = values[question.id];
-      return {
-        question_id: question.id,
-        answer_json:
-          question.type === "open_text"
-            ? { text: value?.text ?? "" }
-            : { selected_option_ids: value?.selected ?? [] },
-      };
-    });
     try {
-      await onSubmit(answers);
+      await onSubmit(collectAnswers());
     } catch (submitError) {
       setError(
         submitError instanceof Error ? submitError.message : "Жауаптарды жіберу мүмкін болмады.",
@@ -134,7 +157,7 @@ export function QuizForm({
                   className="mt-4 min-h-28 w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                   value={values[question.id]?.text ?? ""}
                   onChange={(event) => setText(question.id, event.target.value)}
-                  disabled={disabled}
+                  disabled={disabled || saving || submitting}
                   aria-label={`${index + 1}-сұраққа жауап`}
                 />
               ) : (
@@ -156,7 +179,7 @@ export function QuizForm({
                           value={option.id}
                           checked={checked}
                           onChange={() => toggle(question, option.id)}
-                          disabled={disabled}
+                          disabled={disabled || saving || submitting}
                           className="mt-0.5 size-4 accent-brand-700"
                         />
                         <span>{option.label}</span>
@@ -170,13 +193,17 @@ export function QuizForm({
         );
       })}
       {error ? <Alert tone="error">{error}</Alert> : null}
+      {saved ? <p role="status" className="text-sm text-emerald-700">Жауаптар сақталды.</p> : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-slate-500">
           Жауап берілді: <strong>{answeredCount}</strong> / {questions.length}
         </p>
-        <Button type="submit" loading={submitting} disabled={disabled}>
-          {submitLabel}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {onSave ? <Button type="button" variant="secondary" loading={saving} disabled={disabled || submitting} onClick={() => void saveDraft()}>Жауаптарды сақтау</Button> : null}
+          <Button type="submit" loading={submitting} disabled={disabled || saving}>
+            {submitLabel}
+          </Button>
+        </div>
       </div>
     </form>
   );

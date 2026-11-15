@@ -80,28 +80,28 @@ export function HomePage() {
 
   return (
     <div>
-      <section className="relative overflow-hidden bg-ink-950 text-white">
+      <section className="relative overflow-hidden bg-[#f5f6fa] text-ink-950">
         <div
-          className="pointer-events-none absolute -top-32 -right-24 size-[36rem] rounded-full bg-brand-600/25 blur-3xl"
+          className="pointer-events-none absolute -top-32 -right-24 size-[36rem] rounded-full bg-brand-100/50 blur-3xl"
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute -bottom-40 -left-24 size-[30rem] rounded-full bg-amber-400/10 blur-3xl"
+          className="pointer-events-none absolute -bottom-40 -left-24 size-[30rem] rounded-full bg-white/50 blur-3xl"
           aria-hidden
         />
         <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:py-24">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-brand-200">
+            <span className="inline-flex items-center gap-2 rounded-md bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-800">
               <Sparkles className="size-3.5" aria-hidden />
               Машиналық оқыту · STEM · Жобалар
             </span>
             <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
               ML + STEM LAB
-              <span className="mt-3 block text-2xl font-semibold text-brand-200 sm:text-3xl">
+              <span className="mt-3 block text-2xl font-semibold text-brand-600 sm:text-3xl">
                 STEM-құзыреттіліктерді ML алгоритмдері арқылы дамыту
               </span>
             </h1>
-            <p className="mt-6 max-w-2xl text-base leading-8 text-slate-300">
+            <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600">
               Біртұтас оқу платформасы: алгоритмді үйрену → зерттеу жүргізу → STEM жобасын
               қорғау → диагностика арқылы өзгерісті өлшеу. Мұғалім сыныпты басқарады,
               оқушы өз қарқынымен оқиды, әкімші мазмұнды өз бетінше жариялайды.
@@ -115,7 +115,7 @@ export function HomePage() {
                 to={user ? roleHome(user.role) : "/login"}
                 size="lg"
                 variant="secondary"
-                className="border-white/20 bg-white/10 text-white hover:border-white/40 hover:bg-white/15"
+                className="border-slate-300 bg-white text-slate-800 hover:border-brand-400 hover:bg-brand-50"
               >
                 {user ? "Менің кабинетім" : "Кіру"}
               </LinkButton>
@@ -157,18 +157,18 @@ export function HomePage() {
                 <Link
                   key={item.step}
                   to={item.to}
-                  className="group rounded-2xl border border-white/10 bg-white/5 p-5 no-underline transition hover:border-brand-300/40 hover:bg-white/10"
+                  className="group rounded-md border border-[#dedede] bg-white p-5 no-underline transition hover:border-brand-300 hover:shadow-md"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-brand-500/15 text-brand-200">
+                    <span className="flex size-10 items-center justify-center rounded-md bg-brand-50 text-brand-700">
                       <Icon className="size-5" aria-hidden />
                     </span>
                     <span className="text-xs font-bold tracking-[0.2em] text-slate-500">
                       {item.step}
                     </span>
                   </div>
-                  <p className="mt-3 text-base font-bold text-white">{item.title}</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-400">{item.text}</p>
+                  <p className="mt-3 text-base font-bold text-ink-950">{item.title}</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">{item.text}</p>
                 </Link>
               );
             })}

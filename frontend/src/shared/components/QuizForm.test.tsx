@@ -46,6 +46,21 @@ const questions: AssessmentQuestion[] = [
 ];
 
 describe("QuizForm", () => {
+  it("saves incomplete answers as a draft without submitting the test", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const onSubmit = vi.fn();
+    render(<QuizForm questions={questions} onSave={onSave} onSubmit={onSubmit} />);
+    await user.click(screen.getByLabelText("Машиналық оқыту"));
+    await user.click(screen.getByRole("button", { name: "Жауаптарды сақтау" }));
+    expect(onSave).toHaveBeenCalledWith([
+      { question_id: "q1", answer_json: { selected_option_ids: ["o1"] } },
+      { question_id: "q2", answer_json: { selected_option_ids: [] } },
+      { question_id: "q3", answer_json: { text: "" } },
+    ]);
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(await screen.findByText("Жауаптар сақталды." )).toBeInTheDocument();
+  });
   it("blocks submission until every question is answered", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();

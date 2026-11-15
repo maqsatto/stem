@@ -903,7 +903,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "pattern": "^(order|difficulty|title)$",
+              "pattern": "^(order|difficulty|title|date)$",
               "default": "order",
               "title": "Sort"
             }

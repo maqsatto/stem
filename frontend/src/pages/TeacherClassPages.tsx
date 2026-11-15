@@ -1684,12 +1684,12 @@ export function TeacherResultsPage() {
                         post_date: "",
                         overall_delta_pp: 0,
                         demo_notice: results.data.demo_notice,
-                        rows: results.data.competency_averages.map((row) => ({
+                        rows: results.data.competency_averages.filter((row) => row.delta_average_pp !== null).map((row) => ({
                           competency_id: row.competency_id,
                           title: row.title,
                           slug: row.slug,
-                          pre_percent: row.pre_average ?? 0,
-                          post_percent: row.post_average ?? 0,
+                          pre_percent: row.paired_pre_average ?? 0,
+                          post_percent: row.paired_post_average ?? 0,
                           delta_pp: row.delta_average_pp ?? 0,
                           level: null,
                         })),

@@ -1,4 +1,4 @@
-import { Bold, Code2, Eye, Heading2, Italic, Link2, List, ListOrdered, Pencil } from "lucide-react";
+import { Bold, Code2, Eye, Heading2, Image, Italic, Link2, List, ListOrdered, Pencil } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { RichTextRenderer } from "@/shared/components/RichTextRenderer";
@@ -54,6 +54,16 @@ export function HtmlEditor({
       label: "Сілтеме",
       icon: Link2,
       run: () => insert('<a href="https://example.com">', "</a>", "сілтеме"),
+    },
+    {
+      label: "Сурет",
+      icon: Image,
+      run: () =>
+        insert(
+          '<img src="https://example.com/image.png" alt="',
+          '" />',
+          "сурет сипаттамасы",
+        ),
     },
     { label: "Код", icon: Code2, run: () => insert("<pre><code>", "</code></pre>", "код") },
   ];

@@ -16,7 +16,7 @@ from app.models.assessment import (
 )
 from app.models.classroom import Assignment
 from app.models.content import Competency
-from app.models.enums import AttemptStatus, Role
+from app.models.enums import AssignmentContentType, AssignmentStatus, AttemptStatus, Role
 from app.models.user import User
 from app.schemas.assessment import (
     AnswersPatchIn,
@@ -131,6 +131,18 @@ def start_attempt(
         raise not_found("Диагностика")
     if not assessment.questions:
         raise ApiError(409, "assessment_empty", "Диагностикада сұрақтар жоқ.")
+    assignment_id = payload.assignment_id if payload else None
+    if assignment_id:
+        assignment = db.get(Assignment, assignment_id)
+        if (
+            assignment is None
+            or assignment.content_type != AssignmentContentType.assessment.value
+            or assignment.content_id != assessment.id
+        ):
+            raise not_found("Тапсырма")
+        ensure_classroom_access(db, user, assignment.classroom_id)
+        if assignment.status != AssignmentStatus.active.value:
+            raise ApiError(409, "assignment_closed", "Бұл тапсырма жабылған.")
     assignments_limit = assessment.attempts_limit
     attempts = db.execute(
         select(AssessmentAttempt)
@@ -144,16 +156,16 @@ def start_attempt(
         (item for item in attempts if item.status == AttemptStatus.in_progress.value), None
     )
     if in_progress is not None:
+        if assignment_id and in_progress.assignment_id is None:
+            in_progress.assignment_id = assignment_id
+            db.commit()
+            db.refresh(in_progress)
+        elif assignment_id and in_progress.assignment_id != assignment_id:
+            raise ApiError(409, "attempt_in_other_assignment", "Талпыныс басқа сынып тапсырмасына тіркелген.")
         return serializers.attempt_out(in_progress)
     submitted = [item for item in attempts if item.status == AttemptStatus.submitted.value]
     if len(submitted) >= assignments_limit:
         raise ApiError(409, "attempts_exhausted", "Талпыныс лимиті аяқталды.")
-    assignment_id = payload.assignment_id if payload else None
-    if assignment_id:
-        assignment = db.get(Assignment, assignment_id)
-        if assignment is None or assignment.content_id != assessment.id:
-            raise not_found("Тапсырма")
-        ensure_classroom_access(db, user, assignment.classroom_id)
     attempt_no = max((item.attempt_no for item in attempts), default=0) + 1
     attempt = AssessmentAttempt(
         assessment_id=assessment.id,

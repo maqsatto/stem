@@ -38,7 +38,7 @@ export function buttonClass(
   className?: string,
 ): string {
   return cx(
-    "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed",
+    "inline-flex items-center justify-center gap-2 rounded-md font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed",
     buttonVariants[variant],
     buttonSizes[size],
     className,
@@ -106,7 +106,7 @@ export function Card({
   return (
     <Tag
       className={cx(
-        "rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]",
+        "rounded-md border border-[#dedede] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]",
         className,
       )}
     >

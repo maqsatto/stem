@@ -10,7 +10,6 @@ import {
   ExternalLink,
   FolderKanban,
   ListChecks,
-  Search,
   Target,
   Users,
 } from "lucide-react";
@@ -19,6 +18,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { errorMessage, http } from "@/shared/api";
 import { useAuth } from "@/shared/auth";
+import { CatalogFilters, LessonFilter } from "@/shared/components/CatalogFilters";
 import { DiagnosticsChart } from "@/shared/components/DiagnosticsChart";
 import { ResourceList } from "@/shared/components/ContentBits";
 import { ContentCard } from "@/shared/components/ContentCard";
@@ -272,14 +272,19 @@ export function StudentDashboardPage() {
 export function StudentLessonsPage() {
   useTitle("Сабақтар");
   const [search, setSearch] = useState("");
+  const [algorithmId, setAlgorithmId] = useState("");
+  const [competencyId, setCompetencyId] = useState("");
   const query = useDebouncedValue(search.trim(), 300);
   const [page, setPage] = useState(1);
   const lessons = useQuery({
-    queryKey: ["student-lessons", query, page],
-    queryFn: () =>
-      http.get<Page<LessonCard>>(
-        `/lessons?page=${page}&page_size=12${query ? `&q=${encodeURIComponent(query)}` : ""}`,
-      ),
+    queryKey: ["student-lessons", query, algorithmId, competencyId, page],
+    queryFn: () => {
+      const params = new URLSearchParams({ page: String(page), page_size: "12" });
+      if (query) params.set("q", query);
+      if (algorithmId) params.set("algorithm_id", algorithmId);
+      if (competencyId) params.set("competency_id", competencyId);
+      return http.get<Page<LessonCard>>(`/lessons?${params.toString()}`);
+    },
   });
 
   return (
@@ -289,24 +294,24 @@ export function StudentLessonsPage() {
         title="Сабақтар"
         description="Алты сабақ ML негіздерінен STEM жобасына дейінгі тізбекті құрайды. Әр сабақта теория, ресурстар, практика және рефлексия бар."
       />
-      <div className="mb-5 flex flex-wrap items-center gap-3">
-        <div className="relative max-w-md flex-1">
-          <Search className="pointer-events-none absolute top-3 left-3 size-4 text-slate-400" aria-hidden />
-          <TextInput
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            placeholder="Сабақ іздеу..."
-            className="pl-9"
-            aria-label="Сабақ іздеу"
-          />
-        </div>
-        <p className="text-sm text-slate-500">
-          Барлығы: <strong>{lessons.data?.total ?? "—"}</strong>
-        </p>
-      </div>
+      <CatalogFilters
+        search={search}
+        onSearch={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        algorithmId={algorithmId}
+        onAlgorithmId={(value) => {
+          setAlgorithmId(value);
+          setPage(1);
+        }}
+        competencyId={competencyId}
+        onCompetencyId={(value) => {
+          setCompetencyId(value);
+          setPage(1);
+        }}
+        searchLabel="Сабақ іздеу"
+      />
       {lessons.isLoading ? (
         <PageLoader />
       ) : lessons.isError ? (
@@ -498,16 +503,22 @@ export function StudentLessonDetailPage() {
 export function StudentTasksPage() {
   useTitle("Тапсырмалар");
   const [search, setSearch] = useState("");
+  const [algorithmId, setAlgorithmId] = useState("");
+  const [competencyId, setCompetencyId] = useState("");
+  const [lessonId, setLessonId] = useState("");
   const [type, setType] = useState("");
   const [difficulty, setDifficulty] = useState("");
   const [sort, setSort] = useState("order");
   const query = useDebouncedValue(search.trim(), 300);
   const [page, setPage] = useState(1);
   const tasks = useQuery({
-    queryKey: ["student-tasks", query, type, difficulty, sort, page],
+    queryKey: ["student-tasks", query, algorithmId, competencyId, lessonId, type, difficulty, sort, page],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), page_size: "12", sort });
       if (query) params.set("q", query);
+      if (algorithmId) params.set("algorithm_id", algorithmId);
+      if (competencyId) params.set("competency_id", competencyId);
+      if (lessonId) params.set("lesson_id", lessonId);
       if (type) params.set("type", type);
       if (difficulty) params.set("difficulty", difficulty);
       return http.get<Page<TaskCard>>(`/tasks?${params.toString()}`);
@@ -527,20 +538,25 @@ export function StudentTasksPage() {
         title="Тапсырмалар"
         description="Жабық тесттер серверде автоматты тексеріледі; ашық жұмыстарды мұғалім рубрика бойынша бағалайды. Тапсырманы орындау үшін ол сыныбыңызға тағайындалуы керек."
       />
-      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-3 left-3 size-4 text-slate-400" aria-hidden />
-          <TextInput
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            placeholder="Іздеу..."
-            className="pl-9"
-            aria-label="Тапсырма іздеу"
-          />
-        </div>
+      <CatalogFilters
+        search={search}
+        onSearch={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        algorithmId={algorithmId}
+        onAlgorithmId={(value) => {
+          setAlgorithmId(value);
+          setPage(1);
+        }}
+        competencyId={competencyId}
+        onCompetencyId={(value) => {
+          setCompetencyId(value);
+          setPage(1);
+        }}
+        searchLabel="Тапсырма іздеу"
+      >
+        <LessonFilter value={lessonId} onChange={(value) => { setLessonId(value); setPage(1); }} />
         <Select
           value={type}
           onChange={(event) => {
@@ -571,12 +587,20 @@ export function StudentTasksPage() {
             </option>
           ))}
         </Select>
-        <Select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Сұрыптау">
+        <Select
+          value={sort}
+          onChange={(event) => {
+            setSort(event.target.value);
+            setPage(1);
+          }}
+          aria-label="Сұрыптау"
+        >
           <option value="order">Реті бойынша</option>
           <option value="difficulty">Қиындығы бойынша</option>
+          <option value="date">Жаңа материалдар алдымен</option>
           <option value="title">Атауы бойынша</option>
         </Select>
-      </div>
+      </CatalogFilters>
       {tasks.isLoading ? (
         <PageLoader />
       ) : tasks.isError ? (
@@ -913,9 +937,20 @@ export function StudentTaskDetailPage() {
 
 export function StudentProjectsPage() {
   useTitle("STEM жобалары");
+  const [search, setSearch] = useState("");
+  const [algorithmId, setAlgorithmId] = useState("");
+  const [competencyId, setCompetencyId] = useState("");
+  const query = useDebouncedValue(search.trim(), 300);
+  const [page, setPage] = useState(1);
   const projects = useQuery({
-    queryKey: ["student-projects"],
-    queryFn: () => http.get<Page<ProjectCard>>("/projects?page_size=20"),
+    queryKey: ["student-projects", query, algorithmId, competencyId, page],
+    queryFn: () => {
+      const params = new URLSearchParams({ page: String(page), page_size: "12" });
+      if (query) params.set("q", query);
+      if (algorithmId) params.set("algorithm_id", algorithmId);
+      if (competencyId) params.set("competency_id", competencyId);
+      return http.get<Page<ProjectCard>>(`/projects?${params.toString()}`);
+    },
   });
   const assignments = useStudentAssignments();
   const assignedIds = new Set(
@@ -930,29 +965,57 @@ export function StudentProjectsPage() {
         title="STEM жобалары"
         description="Жобаны таңдап, мәселені зерттеңіз, ML құралын қолданыңыз және нәтижені мұғалімге жіберіңіз. Жоба тағайындалған болса, жіберу формасы ашылады."
       />
+      <CatalogFilters
+        search={search}
+        onSearch={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        algorithmId={algorithmId}
+        onAlgorithmId={(value) => {
+          setAlgorithmId(value);
+          setPage(1);
+        }}
+        competencyId={competencyId}
+        onCompetencyId={(value) => {
+          setCompetencyId(value);
+          setPage(1);
+        }}
+        searchLabel="Жоба іздеу"
+      />
       {projects.isLoading ? (
         <PageLoader />
       ) : projects.isError ? (
         <Alert tone="error">{errorMessage(projects.error)}</Alert>
+      ) : (projects.data?.items.length ?? 0) === 0 ? (
+        <EmptyState title="Жобалар табылмады" />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {projects.data?.items.map((project) => (
-            <ContentCard
-              key={project.id}
-              to={`/student/projects/${project.id}`}
-              title={project.title}
-              description={project.summary}
-              icon={<FolderKanban className="size-5" aria-hidden />}
-              demo={project.is_demo}
-              badges={
-                <>
-                  {assignedIds.has(project.id) ? <Badge tone="green">Тағайындалған</Badge> : null}
-                  {project.algorithm ? <Badge tone="brand">{project.algorithm.title}</Badge> : null}
-                </>
-              }
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {projects.data?.items.map((project) => (
+              <ContentCard
+                key={project.id}
+                to={`/student/projects/${project.id}`}
+                title={project.title}
+                description={project.summary}
+                icon={<FolderKanban className="size-5" aria-hidden />}
+                demo={project.is_demo}
+                badges={
+                  <>
+                    {assignedIds.has(project.id) ? <Badge tone="green">Тағайындалған</Badge> : null}
+                    {project.algorithm ? <Badge tone="brand">{project.algorithm.title}</Badge> : null}
+                  </>
+                }
+              />
+            ))}
+          </div>
+          <Pagination
+            page={page}
+            total={projects.data?.total ?? 0}
+            pageSize={12}
+            onPage={setPage}
+          />
+        </>
       )}
     </div>
   );
@@ -1455,11 +1518,12 @@ export function StudentAssessmentDetailPage() {
           <div className="mt-6">
             <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
               Талпыныс ашылды. Барлық сұраққа жауап беріп, «Жауаптарды жіберу» түймесін басыңыз.
-              Жауаптар жіберілгенге дейін серверде сақталады.
+              Аяқтамай шығу үшін жауаптарды сақтау түймесін басыңыз.
             </div>
             <QuizForm
               questions={data.questions}
               initialValues={initialValues}
+              onSave={(answers) => http.patch(`/attempts/${attempt.id}/answers`, { answers }).then(() => undefined)}
               onSubmit={(answers) => submit.mutateAsync(answers).then(() => undefined)}
               submitting={submit.isPending}
               submitLabel="Жауаптарды жіберу"
@@ -1479,7 +1543,10 @@ export function StudentAssessmentDetailPage() {
             ) : null}
             {data.can_attempt ? (
               <div className="mt-4">
-                <Button loading={start.isPending} onClick={() => start.mutate()}>
+                {assignments.isError ? (
+                  <Alert tone="error">Тағайындауларды жүктеу мүмкін болмады. Бетті жаңартып, қайта көріңіз.</Alert>
+                ) : null}
+                <Button disabled={!assignments.isSuccess} loading={start.isPending} onClick={() => start.mutate()}>
                   Талпынысты бастау
                 </Button>
               </div>

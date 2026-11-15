@@ -170,6 +170,24 @@ def assignment_out(db: Session, assignment: Assignment, student: User | None = N
     submissions = db.execute(
         select(Submission).where(Submission.assignment_id == assignment.id)
     ).scalars().all()
+    submitted_count = len(submissions)
+    reviewed_count = len(
+        [item for item in submissions if item.status == SubmissionStatus.reviewed.value]
+    )
+    if assignment.content_type == AssignmentContentType.assessment.value:
+        from app.models.assessment import AssessmentAttempt
+        from app.models.enums import AttemptStatus
+
+        submitted_count = db.execute(
+            select(func.count(func.distinct(AssessmentAttempt.student_id)))
+            .join(ClassroomMember, ClassroomMember.student_id == AssessmentAttempt.student_id)
+            .where(
+                ClassroomMember.classroom_id == assignment.classroom_id,
+                AssessmentAttempt.assignment_id == assignment.id,
+                AssessmentAttempt.status == AttemptStatus.submitted.value,
+            )
+        ).scalar_one()
+        reviewed_count = submitted_count
     payload = {
         "id": assignment.id,
         "classroom_id": assignment.classroom_id,
@@ -183,10 +201,8 @@ def assignment_out(db: Session, assignment: Assignment, student: User | None = N
         "notes": assignment.notes,
         "created_at": assignment.created_at,
         "total_students": students,
-        "submitted_count": len(submissions),
-        "reviewed_count": len(
-            [item for item in submissions if item.status == SubmissionStatus.reviewed.value]
-        ),
+        "submitted_count": submitted_count,
+        "reviewed_count": reviewed_count,
         "max_score": assignment_max_score(db, assignment),
         "student_status": None,
         "submission_id": None,
@@ -208,7 +224,7 @@ def assignment_out(db: Session, assignment: Assignment, student: User | None = N
             attempt = db.execute(
                 select(AssessmentAttempt)
                 .where(
-                    AssessmentAttempt.assessment_id == assignment.content_id,
+                    AssessmentAttempt.assignment_id == assignment.id,
                     AssessmentAttempt.student_id == student.id,
                 )
                 .order_by(AssessmentAttempt.attempt_no.desc())

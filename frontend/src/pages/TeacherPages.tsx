@@ -11,13 +11,13 @@ import {
   GraduationCap,
   Layers,
   ListChecks,
-  Search,
   Wrench,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { errorMessage, http } from "@/shared/api";
+import { CatalogFilters, LessonFilter } from "@/shared/components/CatalogFilters";
 import { AssignToClass, ResourceList } from "@/shared/components/ContentBits";
 import { ContentCard } from "@/shared/components/ContentCard";
 import { RichTextRenderer } from "@/shared/components/RichTextRenderer";
@@ -53,7 +53,6 @@ import {
   Pagination,
   Select,
   StatCard,
-  TextInput,
 } from "@/shared/ui";
 
 interface TeacherCompetency {
@@ -438,14 +437,19 @@ export function TeacherCurriculumPage() {
 export function TeacherLessonsPage() {
   useTitle("Сабақтар");
   const [search, setSearch] = useState("");
+  const [algorithmId, setAlgorithmId] = useState("");
+  const [competencyId, setCompetencyId] = useState("");
   const query = useDebouncedValue(search.trim(), 300);
   const [page, setPage] = useState(1);
   const lessons = useQuery({
-    queryKey: ["teacher-lessons", query, page],
-    queryFn: () =>
-      http.get<Page<LessonCard>>(
-        `/lessons?page=${page}&page_size=12${query ? `&q=${encodeURIComponent(query)}` : ""}`,
-      ),
+    queryKey: ["teacher-lessons", query, algorithmId, competencyId, page],
+    queryFn: () => {
+      const params = new URLSearchParams({ page: String(page), page_size: "12" });
+      if (query) params.set("q", query);
+      if (algorithmId) params.set("algorithm_id", algorithmId);
+      if (competencyId) params.set("competency_id", competencyId);
+      return http.get<Page<LessonCard>>(`/lessons?${params.toString()}`);
+    },
   });
   return (
     <div>
@@ -454,21 +458,24 @@ export function TeacherLessonsPage() {
         title="Сабақ жоспарлары мен материалдар"
         description="Мұғалімге арналған файлдар, презентациялар және бағалау материалдары сабақ бетінде көрсетіледі. Оқушылар бұл файлдарды көрмейді."
       />
-      <div className="mb-5 max-w-md">
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-3 left-3 size-4 text-slate-400" aria-hidden />
-          <TextInput
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            placeholder="Сабақ іздеу..."
-            className="pl-9"
-            aria-label="Сабақ іздеу"
-          />
-        </div>
-      </div>
+      <CatalogFilters
+        search={search}
+        onSearch={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        algorithmId={algorithmId}
+        onAlgorithmId={(value) => {
+          setAlgorithmId(value);
+          setPage(1);
+        }}
+        competencyId={competencyId}
+        onCompetencyId={(value) => {
+          setCompetencyId(value);
+          setPage(1);
+        }}
+        searchLabel="Сабақ іздеу"
+      />
       {lessons.isLoading ? (
         <PageLoader />
       ) : lessons.isError ? (
@@ -620,14 +627,22 @@ export function TeacherLessonDetailPage() {
 export function TeacherTasksPage() {
   useTitle("Тапсырмалар кітапханасы");
   const [search, setSearch] = useState("");
+  const [algorithmId, setAlgorithmId] = useState("");
+  const [competencyId, setCompetencyId] = useState("");
+  const [lessonId, setLessonId] = useState("");
   const [type, setType] = useState("");
   const [difficulty, setDifficulty] = useState("");
+  const [sort, setSort] = useState("order");
+  const [page, setPage] = useState(1);
   const query = useDebouncedValue(search.trim(), 300);
   const tasks = useQuery({
-    queryKey: ["teacher-tasks", query, type, difficulty],
+    queryKey: ["teacher-tasks", query, algorithmId, competencyId, lessonId, type, difficulty, sort, page],
     queryFn: () => {
-      const params = new URLSearchParams({ page_size: "100" });
+      const params = new URLSearchParams({ page: String(page), page_size: "12", sort });
       if (query) params.set("q", query);
+      if (algorithmId) params.set("algorithm_id", algorithmId);
+      if (competencyId) params.set("competency_id", competencyId);
+      if (lessonId) params.set("lesson_id", lessonId);
       if (type) params.set("type", type);
       if (difficulty) params.set("difficulty", difficulty);
       return http.get<Page<TaskCard>>(`/tasks?${params.toString()}`);
@@ -640,18 +655,17 @@ export function TeacherTasksPage() {
         title="Тапсырмалар"
         description="Жабық тесттердің дұрыс жауаптары мен ашық жұмыстардың рубрикалары осында қолжетімді. Тапсырманы сыныпқа тағайындау үшін оны ашыңыз."
       />
-      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-3 left-3 size-4 text-slate-400" aria-hidden />
-          <TextInput
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Іздеу..."
-            className="pl-9"
-            aria-label="Тапсырма іздеу"
-          />
-        </div>
-        <Select value={type} onChange={(event) => setType(event.target.value)} aria-label="Түрі">
+      <CatalogFilters
+        search={search}
+        onSearch={(value) => { setSearch(value); setPage(1); }}
+        algorithmId={algorithmId}
+        onAlgorithmId={(value) => { setAlgorithmId(value); setPage(1); }}
+        competencyId={competencyId}
+        onCompetencyId={(value) => { setCompetencyId(value); setPage(1); }}
+        searchLabel="Тапсырма іздеу"
+      >
+        <LessonFilter value={lessonId} onChange={(value) => { setLessonId(value); setPage(1); }} />
+        <Select value={type} onChange={(event) => { setType(event.target.value); setPage(1); }} aria-label="Түрі">
           <option value="">Барлық түрлер</option>
           {Object.entries(taskTypeLabels).map(([value, label]) => (
             <option key={value} value={value}>
@@ -661,7 +675,7 @@ export function TeacherTasksPage() {
         </Select>
         <Select
           value={difficulty}
-          onChange={(event) => setDifficulty(event.target.value)}
+          onChange={(event) => { setDifficulty(event.target.value); setPage(1); }}
           aria-label="Қиындығы"
         >
           <option value="">Барлық деңгейлер</option>
@@ -671,12 +685,21 @@ export function TeacherTasksPage() {
             </option>
           ))}
         </Select>
-      </div>
+        <Select value={sort} onChange={(event) => { setSort(event.target.value); setPage(1); }} aria-label="Сұрыптау">
+          <option value="order">Реті бойынша</option>
+          <option value="difficulty">Қиындығы бойынша</option>
+          <option value="date">Жаңа материалдар алдымен</option>
+          <option value="title">Атауы бойынша</option>
+        </Select>
+      </CatalogFilters>
       {tasks.isLoading ? (
         <PageLoader />
       ) : tasks.isError ? (
         <Alert tone="error">{errorMessage(tasks.error)}</Alert>
+      ) : (tasks.data?.items.length ?? 0) === 0 ? (
+        <EmptyState title="Тапсырмалар табылмады" />
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {tasks.data?.items.map((task) => (
             <ContentCard
@@ -702,6 +725,8 @@ export function TeacherTasksPage() {
             />
           ))}
         </div>
+        <Pagination page={page} total={tasks.data?.total ?? 0} pageSize={12} onPage={setPage} />
+        </>
       )}
     </div>
   );
@@ -840,9 +865,20 @@ export function TeacherTaskDetailPage() {
 
 export function TeacherProjectsPage() {
   useTitle("STEM жобалары");
+  const [search, setSearch] = useState("");
+  const [algorithmId, setAlgorithmId] = useState("");
+  const [competencyId, setCompetencyId] = useState("");
+  const [page, setPage] = useState(1);
+  const query = useDebouncedValue(search.trim(), 300);
   const projects = useQuery({
-    queryKey: ["teacher-projects"],
-    queryFn: () => http.get<Page<ProjectCard>>("/projects?page_size=100"),
+    queryKey: ["teacher-projects", query, algorithmId, competencyId, page],
+    queryFn: () => {
+      const params = new URLSearchParams({ page: String(page), page_size: "12" });
+      if (query) params.set("q", query);
+      if (algorithmId) params.set("algorithm_id", algorithmId);
+      if (competencyId) params.set("competency_id", competencyId);
+      return http.get<Page<ProjectCard>>(`/projects?${params.toString()}`);
+    },
   });
   return (
     <div>
@@ -851,11 +887,23 @@ export function TeacherProjectsPage() {
         title="STEM жобалары"
         description="Жобалардың толық сипаттамасы, рубрикалары және оқушыларға арналған нұсқаулықтары. Жобаны сыныпқа тағайындап, нәтижені рубрика бойынша бағалаңыз."
       />
+      <CatalogFilters
+        search={search}
+        onSearch={(value) => { setSearch(value); setPage(1); }}
+        algorithmId={algorithmId}
+        onAlgorithmId={(value) => { setAlgorithmId(value); setPage(1); }}
+        competencyId={competencyId}
+        onCompetencyId={(value) => { setCompetencyId(value); setPage(1); }}
+        searchLabel="Жоба іздеу"
+      />
       {projects.isLoading ? (
         <PageLoader />
       ) : projects.isError ? (
         <Alert tone="error">{errorMessage(projects.error)}</Alert>
+      ) : (projects.data?.items.length ?? 0) === 0 ? (
+        <EmptyState title="Жобалар табылмады" />
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {projects.data?.items.map((project) => (
             <ContentCard
@@ -873,6 +921,8 @@ export function TeacherProjectsPage() {
             />
           ))}
         </div>
+        <Pagination page={page} total={projects.data?.total ?? 0} pageSize={12} onPage={setPage} />
+        </>
       )}
     </div>
   );

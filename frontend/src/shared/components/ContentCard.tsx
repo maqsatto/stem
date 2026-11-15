@@ -23,16 +23,16 @@ export function ContentCard({
   demo?: boolean;
 }) {
   const content = (
-    <Card className="flex h-full flex-col transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md">
+    <Card className="flex h-full flex-col border-transparent bg-transparent transition hover:border-[#e3e3e3] hover:bg-white hover:shadow-[4px_8px_20px_rgba(130,130,130,0.16)] max-sm:border-[#e3e3e3] max-sm:bg-white">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           {icon ? (
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700">
               {icon}
             </span>
           ) : null}
           <div>
-            <h3 className="text-base font-bold leading-6 text-ink-950">{title}</h3>
+            <h3 className="text-lg font-bold leading-6 text-ink-950">{title}</h3>
             {meta ? <div className="mt-1 text-xs text-slate-500">{meta}</div> : null}
           </div>
         </div>

@@ -431,6 +431,8 @@ export interface CompetencyAverage {
   pre_average: number | null;
   post_average: number | null;
   delta_average_pp: number | null;
+  paired_pre_average: number | null;
+  paired_post_average: number | null;
   students_with_pre: number;
   students_with_post: number;
 }

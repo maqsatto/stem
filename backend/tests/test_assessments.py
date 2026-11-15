@@ -210,6 +210,41 @@ def test_attempt_limit(client, db):
     assert exhausted.json()["code"] == "attempts_exhausted"
 
 
+def test_in_progress_attempt_is_linked_to_authorized_assignment_and_counted(client, db):
+    comp = create_competency(db)
+    assessment = create_assessment(
+        db, questions=[question("single_choice", comp, correct=["Дұрыс"], wrong=["Қате"])],
+    )
+    teacher = create_user(db, role="teacher")
+    student = create_user(db, role="student")
+    other_teacher = create_user(db, role="teacher")
+    classroom = create_classroom(db, teacher, [student])
+    other_class = create_classroom(db, other_teacher)
+    assignment = create_assignment(db, classroom, "assessment", assessment.id)
+    other_assignment = create_assignment(db, other_class, "assessment", assessment.id)
+    headers = auth(login(client, student.email))
+    teacher_headers = auth(login(client, teacher.email))
+
+    started = client.post(f"/api/v1/assessments/{assessment.id}/attempts", headers=headers)
+    assert started.status_code == 200
+    attempt_id = started.json()["id"]
+    forbidden = client.post(
+        f"/api/v1/assessments/{assessment.id}/attempts",
+        json={"assignment_id": str(other_assignment.id)}, headers=headers,
+    )
+    assert forbidden.status_code == 404
+    resumed = client.post(
+        f"/api/v1/assessments/{assessment.id}/attempts",
+        json={"assignment_id": str(assignment.id)}, headers=headers,
+    )
+    assert resumed.status_code == 200
+    assert resumed.json()["id"] == attempt_id
+    assert client.get(f"/api/v1/attempts/{attempt_id}", headers=teacher_headers).status_code == 200
+    assert client.post(f"/api/v1/attempts/{attempt_id}/submit", headers=headers).status_code == 200
+    assignments = client.get("/api/v1/assignments", headers=teacher_headers).json()["items"]
+    assert assignments[0]["submitted_count"] == 1
+
+
 def test_teacher_csv_is_scoped_and_has_bom(client, db):
     comp = create_competency(db, "CSV құзыреттілігі")
     pre = create_assessment(
@@ -288,3 +323,99 @@ def test_teacher_dashboard_counts(client, db):
     assert body["students"] == 1
     assert body["assignments"] == 1
     assert body["pending_reviews"] == 1
+
+
+def test_class_report_shows_pre_results_before_post_is_completed(client, db):
+    comp = create_competency(db, "Логика")
+    pre = create_assessment(
+        db, kind="pre", methodology_key="baseline",
+        questions=[question("single_choice", comp, correct=["Дұрыс"], wrong=["Қате"])],
+    )
+    teacher = create_user(db, role="teacher")
+    student = create_user(db, role="student")
+    classroom = create_classroom(db, teacher, [student])
+    assignment = create_assignment(db, classroom, "assessment", pre.id)
+    headers = auth(login(client, student.email))
+    started = client.post(
+        f"/api/v1/assessments/{pre.id}/attempts",
+        json={"assignment_id": str(assignment.id)}, headers=headers,
+    )
+    attempt_id = started.json()["id"]
+    assert client.patch(
+        f"/api/v1/attempts/{attempt_id}/answers",
+        json=answer_payload(pre, {0: correct_ids(pre, 0)}), headers=headers,
+    ).status_code == 200
+    assert client.post(f"/api/v1/attempts/{attempt_id}/submit", headers=headers).status_code == 200
+    teacher_headers = auth(login(client, teacher.email))
+    response = client.get(f"/api/v1/teacher/classes/{classroom.id}/results", headers=teacher_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["students"][0]["pre_overall"] == 100
+    assert body["students"][0]["post_overall"] is None
+    assert body["students"][0]["delta_pp"] == {}
+    assert body["competency_averages"][0]["students_with_pre"] == 1
+    assert body["competency_averages"][0]["pre_average"] == 100
+
+    second = create_user(db, role="student")
+    second_headers = auth(login(client, second.email))
+    assert client.post(
+        "/api/v1/classes/join", json={"code": classroom.join_code}, headers=second_headers,
+    ).status_code == 200
+    post = create_assessment(
+        db, kind="post", methodology_key="baseline",
+        questions=[question("single_choice", comp, correct=["Дұрыс"], wrong=["Қате"])],
+    )
+    post_assignment = create_assignment(db, classroom, "assessment", post.id)
+    for assessment, assigned, correct in [(pre, assignment, False), (post, post_assignment, True)]:
+        started = client.post(
+            f"/api/v1/assessments/{assessment.id}/attempts",
+            json={"assignment_id": str(assigned.id)}, headers=second_headers,
+        )
+        current_id = started.json()["id"]
+        if correct:
+            client.patch(
+                f"/api/v1/attempts/{current_id}/answers",
+                json=answer_payload(assessment, {0: correct_ids(assessment, 0)}),
+                headers=second_headers,
+            )
+        assert client.post(f"/api/v1/attempts/{current_id}/submit", headers=second_headers).status_code == 200
+    row = client.get(
+        f"/api/v1/teacher/classes/{classroom.id}/results", headers=teacher_headers,
+    ).json()["competency_averages"][0]
+    assert row["pre_average"] == 50
+    assert row["paired_pre_average"] == 0
+    assert row["paired_post_average"] == 100
+    assert row["delta_average_pp"] == 100
+
+
+def test_class_report_does_not_include_attempts_from_another_class(client, db):
+    pre, post = build_pre_post(db)
+    student = create_user(db, role="student")
+    teacher = create_user(db, role="teacher")
+    other_teacher = create_user(db, role="teacher")
+    classroom = create_classroom(db, teacher, [student])
+    other_class = create_classroom(db, other_teacher, [student])
+    student_headers = auth(login(client, student.email))
+    task = create_task(db, task_type="open_text")
+    other_task = create_assignment(db, other_class, "task", task.id)
+    assert client.post(
+        f"/api/v1/assignments/{other_task.id}/submissions",
+        json={"text": "Другая работа"}, headers=student_headers,
+    ).status_code == 200
+    for assessment in (pre, post):
+        assignment = create_assignment(db, other_class, "assessment", assessment.id)
+        started = client.post(
+            f"/api/v1/assessments/{assessment.id}/attempts",
+            json={"assignment_id": str(assignment.id)}, headers=student_headers,
+        )
+        assert client.post(
+            f"/api/v1/attempts/{started.json()['id']}/submit", headers=student_headers,
+        ).status_code == 200
+    response = client.get(
+        f"/api/v1/teacher/classes/{classroom.id}/results",
+        headers=auth(login(client, teacher.email)),
+    )
+    assert response.status_code == 200
+    assert response.json()["students"][0]["pre_overall"] is None
+    assert response.json()["students"][0]["post_overall"] is None
+    assert response.json()["students"][0]["tasks_submitted"] == 0

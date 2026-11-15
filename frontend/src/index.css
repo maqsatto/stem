@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --color-brand-50: #eefbf7;
-  --color-brand-100: #d5f5ec;
-  --color-brand-200: #aeead9;
-  --color-brand-300: #7ad8c1;
-  --color-brand-400: #45bda4;
-  --color-brand-500: #249f88;
-  --color-brand-600: #17806f;
-  --color-brand-700: #15665b;
-  --color-brand-800: #14524a;
-  --color-brand-900: #12443e;
-  --color-ink-950: #0b1727;
-  --color-ink-900: #122033;
+  --font-sans: "Segoe UI", Arial, system-ui, sans-serif;
+  --color-brand-50: #fff4f1;
+  --color-brand-100: #ffe5df;
+  --color-brand-200: #ffcabd;
+  --color-brand-300: #f8a392;
+  --color-brand-400: #f27d68;
+  --color-brand-500: #e96b52;
+  --color-brand-600: #d9563f;
+  --color-brand-700: #b94230;
+  --color-brand-800: #963426;
+  --color-brand-900: #772d23;
+  --color-ink-950: #222222;
+  --color-ink-900: #292929;
   --color-ink-700: #334155;
   --color-ink-500: #64748b;
 }
@@ -24,7 +24,8 @@
   }
 
   body {
-    @apply bg-slate-50 text-ink-900 antialiased;
+    @apply text-ink-900 antialiased;
+    background: #efefef;
     min-width: 360px;
   }
 
@@ -36,6 +37,16 @@
     @apply text-brand-700;
   }
 }
+
+/* The public masthead keeps its links readable on the dark upper bar. */
+.public-header > div:first-child > a > span:last-child > span:first-child { color: #fff; }
+.public-header > div:first-child > a > span:last-child > span:last-child { color: #f4a28f; }
+.public-header > div:first-child > div a:not([href="/register"]),
+.public-header > div:first-child > div button,
+.public-header > div:first-child > button { color: #fff; }
+.public-header > div:first-child > div a:not([href="/register"]):hover,
+.public-header > div:first-child > div button:hover,
+.public-header > div:first-child > button:hover { background: #393939; }
 
 @layer components {
   .prose-content {

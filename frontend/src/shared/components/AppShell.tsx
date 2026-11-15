@@ -42,26 +42,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         Негізгі мазмұнға өту
       </a>
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <header className="public-header sticky top-0 z-40 bg-[#222]">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <Brand />
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Негізгі навигация">
-            {publicNav.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `rounded-lg px-3 py-2 text-sm font-semibold no-underline transition-colors ${
-                    isActive
-                      ? "bg-brand-50 text-brand-800"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-ink-950"
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
           <div className="hidden items-center gap-2 md:flex">
             {user ? (
               <>
@@ -99,6 +82,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             {open ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
+        </div>
+        <div className="hidden border-b border-[#dedede] bg-white md:block">
+          <nav className="mx-auto flex max-w-7xl items-center gap-9 px-6 lg:px-8" aria-label="Негізгі навигация">
+            {publicNav.map((item) => (
+              <NavLink key={item.to} to={item.to} className={({ isActive }) =>
+                `border-b-2 py-3 text-sm font-semibold no-underline transition-colors ${isActive ? "border-brand-600 text-brand-700" : "border-transparent text-slate-600 hover:text-brand-700"}`
+              }>{item.label}</NavLink>
+            ))}
+          </nav>
         </div>
         {open ? (
           <div id="public-mobile-nav" className="border-t border-slate-200 bg-white px-4 py-4 md:hidden">
