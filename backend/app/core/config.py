@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,6 +52,20 @@ class Settings(BaseSettings):
     @classmethod
     def _upload_dir(cls, value: str | Path) -> Path:
         return Path(value)
+
+    @model_validator(mode="after")
+    def _require_strong_production_secret(self) -> "Settings":
+        """Refuse to start production with the shipped placeholder secrets."""
+        if self.environment.lower() != "production":
+            return self
+        secret = self.secret_key.strip()
+        weak_markers = ("change-me", "changeme", "insecure", "dev-secret", "secret-key")
+        if len(secret) < 32 or any(marker in secret.lower() for marker in weak_markers):
+            raise ValueError(
+                "SECRET_KEY must be a random string of at least 32 characters in production. "
+                "Generate one with: openssl rand -hex 32"
+            )
+        return self
 
     @property
     def sqlalchemy_database_url(self) -> str:
