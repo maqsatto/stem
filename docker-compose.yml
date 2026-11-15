@@ -1,0 +1,76 @@
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mlstem}
+      POSTGRES_USER: ${POSTGRES_USER:-mlstem}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mlstem-change-me}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlstem} -d ${POSTGRES_DB:-mlstem}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY:-change-me-to-a-long-random-string}
+      ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-30}
+      REFRESH_TOKEN_DAYS: ${REFRESH_TOKEN_DAYS:-14}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mlstem}:${POSTGRES_PASSWORD:-mlstem-change-me}@db:5432/${POSTGRES_DB:-mlstem}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      UPLOAD_DIR: /app/uploads
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+      DOCS_ENABLED: ${DOCS_ENABLED:-true}
+      SEED_ON_START: ${SEED_ON_START:-true}
+      ALLOW_STUDENT_REGISTRATION: ${ALLOW_STUDENT_REGISTRATION:-true}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@mlstem.kz}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin123!}
+      DEMO_TEACHER_EMAIL: ${DEMO_TEACHER_EMAIL:-teacher@mlstem.kz}
+      DEMO_TEACHER_PASSWORD: ${DEMO_TEACHER_PASSWORD:-Teacher123!}
+      DEMO_STUDENT_EMAIL: ${DEMO_STUDENT_EMAIL:-student@mlstem.kz}
+      DEMO_STUDENT_PASSWORD: ${DEMO_STUDENT_PASSWORD:-Student123!}
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      - db
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: /api/v1
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  pgdata:
+  uploads:

@@ -1,0 +1,17 @@
+# Build context for the frontend image is the repository root.
+.git
+.gitignore
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+backend/uploads
+backend/storage
+backups
+docs
+ML_STEM_LAB_MVP_TZ.md
+*.log
+.env
+.env.*
