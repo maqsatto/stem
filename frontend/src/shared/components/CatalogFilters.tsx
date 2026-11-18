@@ -3,8 +3,10 @@ import { Search } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { http } from "@/shared/api";
-import type { AlgorithmCard, CompetencyCard, LessonCard, Page } from "@/shared/types";
+import type { AlgorithmCard, Classroom, CompetencyCard, LessonCard, Page } from "@/shared/types";
 import { Select, TextInput } from "@/shared/ui";
+import { usePreferences, useText } from "@/shared/preferences";
+import { localizeAlgorithm, localizeCompetency, localizeLesson } from "@/shared/localizeContent";
 
 /**
  * Shared reference data for catalog filters. TanStack Query caches the two
@@ -33,6 +35,8 @@ export function CatalogFilters({
   competencyId,
   onCompetencyId,
   searchLabel,
+  sort,
+  onSort,
   children,
 }: {
   search: string;
@@ -42,9 +46,13 @@ export function CatalogFilters({
   competencyId: string;
   onCompetencyId: (value: string) => void;
   searchLabel: string;
+  sort?: string;
+  onSort?: (value: string) => void;
   children?: ReactNode;
 }) {
   const refs = useCatalogRefs();
+  const { language } = usePreferences();
+  const t = useText();
   return (
     <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <div className="relative">
@@ -55,7 +63,7 @@ export function CatalogFilters({
         <TextInput
           value={search}
           onChange={(event) => onSearch(event.target.value)}
-          placeholder="Іздеу..."
+          placeholder={t("Іздеу...", "Search...")}
           className="pl-9"
           aria-label={searchLabel}
         />
@@ -63,33 +71,40 @@ export function CatalogFilters({
       <Select
         value={algorithmId}
         onChange={(event) => onAlgorithmId(event.target.value)}
-        aria-label="ML алгоритмі"
+        aria-label={t("ML алгоритмі", "ML algorithm")}
       >
-        <option value="">Барлық ML алгоритмдері</option>
+        <option value="">{t("Барлық ML алгоритмдері", "All ML algorithms")}</option>
         {refs.algorithms.map((algorithm) => (
           <option key={algorithm.id} value={algorithm.id}>
-            {algorithm.title}
+            {localizeAlgorithm(algorithm, language).title}
           </option>
         ))}
       </Select>
       <Select
         value={competencyId}
         onChange={(event) => onCompetencyId(event.target.value)}
-        aria-label="STEM құзыреттілігі"
+        aria-label={t("STEM құзыреттілігі", "STEM competency")}
       >
-        <option value="">Барлық құзыреттіліктер</option>
+        <option value="">{t("Барлық құзыреттіліктер", "All competencies")}</option>
         {refs.competencies.map((competency) => (
           <option key={competency.id} value={competency.id}>
-            {competency.title}
+            {localizeCompetency(competency, language).title}
           </option>
         ))}
       </Select>
+      {onSort ? <Select value={sort ?? "order"} onChange={(event) => onSort(event.target.value)} aria-label={t("Сұрыптау", "Sort")}>
+        <option value="order">{t("Реті бойынша", "Default order")}</option>
+        <option value="title">{t("Атауы бойынша", "Title")}</option>
+        <option value="date">{t("Жаңа материалдар алдымен", "Newest first")}</option>
+      </Select> : null}
       {children}
     </div>
   );
 }
 
 export function LessonFilter({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const { language } = usePreferences();
+  const t = useText();
   const lessons = useQuery({
     queryKey: ["catalog", "lessons", "filters"],
     queryFn: async () => {
@@ -107,9 +122,21 @@ export function LessonFilter({ value, onChange }: { value: string; onChange: (va
     },
   });
   return (
-    <Select value={value} onChange={(event) => onChange(event.target.value)} aria-label="Сабақ">
-      <option value="">Барлық сабақтар</option>
-      {(lessons.data ?? []).map((lesson) => <option key={lesson.id} value={lesson.id}>{lesson.title}</option>)}
+    <Select value={value} onChange={(event) => onChange(event.target.value)} aria-label={t("Сабақ", "Lesson")}>
+      <option value="">{t("Барлық сабақтар", "All lessons")}</option>
+      {(lessons.data ?? []).map((lesson) => <option key={lesson.id} value={lesson.id}>{localizeLesson(lesson, language).title}</option>)}
     </Select>
   );
+}
+
+export function ClassFilter({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const t = useText();
+  const classes = useQuery({
+    queryKey: ["catalog", "classes", "filters"],
+    queryFn: () => http.get<Page<Classroom>>("/classes?page_size=100"),
+  });
+  return <Select value={value} onChange={(event) => onChange(event.target.value)} aria-label={t("Сынып", "Class")}>
+    <option value="">{t("Барлық сыныптар", "All classes")}</option>
+    {(classes.data?.items ?? []).map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+  </Select>;
 }

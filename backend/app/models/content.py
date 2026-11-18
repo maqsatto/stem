@@ -35,6 +35,7 @@ class Algorithm(UUIDPrimaryKeyMixin, TimestampMixin, ContentMixin, Base):
     title_en: Mapped[str | None] = mapped_column(String(200), nullable=True)
     summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
     body: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    translation_en: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     cover_image: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     lessons: Mapped[list["Lesson"]] = relationship(back_populates="algorithm")
@@ -48,6 +49,7 @@ class Competency(UUIDPrimaryKeyMixin, TimestampMixin, ContentMixin, Base):
     slug: Mapped[str] = mapped_column(String(120), unique=True, index=True, nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    translation_en: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     indicators_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     criteria_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
@@ -68,6 +70,7 @@ class Lesson(UUIDPrimaryKeyMixin, TimestampMixin, ContentMixin, Base):
     body: Mapped[str] = mapped_column(Text, nullable=False, default="")
     goal: Mapped[str] = mapped_column(Text, nullable=False, default="")
     reflection: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    translation_en: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     duration_min: Mapped[int] = mapped_column(Integer, default=45, nullable=False)
     order_no: Mapped[int] = mapped_column(Integer, default=1, nullable=False, index=True)
 
@@ -116,6 +119,7 @@ class Task(UUIDPrimaryKeyMixin, TimestampMixin, ContentMixin, Base):
     difficulty: Mapped[str] = mapped_column(String(20), nullable=False, default="medium")
     instructions: Mapped[str] = mapped_column(Text, nullable=False, default="")
     body: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    translation_en: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     max_score: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
     rubric_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     attempts_limit: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
@@ -139,6 +143,7 @@ class TaskOption(UUIDPrimaryKeyMixin, Base):
         UUID(as_uuid=True), ForeignKey("tasks.id", ondelete="CASCADE"), index=True, nullable=False
     )
     label: Mapped[str] = mapped_column(Text, nullable=False)
+    label_en: Mapped[str] = mapped_column(Text, default="", nullable=False)
     is_correct: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     order_no: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
@@ -172,6 +177,7 @@ class Project(UUIDPrimaryKeyMixin, TimestampMixin, ContentMixin, Base):
     problem: Mapped[str] = mapped_column(Text, nullable=False, default="")
     goal: Mapped[str] = mapped_column(Text, nullable=False, default="")
     body: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    translation_en: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     steps_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     materials_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     tools_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)

@@ -26,7 +26,7 @@
   body {
     @apply text-ink-900 antialiased;
     background: #efefef;
-    min-width: 360px;
+    min-width: 0;
   }
 
   :focus-visible {
@@ -47,6 +47,63 @@
 .public-header > div:first-child > div a:not([href="/register"]):hover,
 .public-header > div:first-child > div button:hover,
 .public-header > div:first-child > button:hover { background: #393939; }
+.public-header select option { background: #fff; color: #222; }
+
+/* Dark palette for the existing utility-based screens. */
+html[data-theme="dark"] {
+  --color-ink-950: #f1f3f6;
+  --color-ink-900: #e3e7ed;
+  --color-ink-700: #c7d0db;
+  --color-ink-500: #a9b4c3;
+  --color-brand-50: #382522;
+  --color-brand-100: #4b2d28;
+  --color-brand-200: #75453b;
+  --color-brand-300: #e99a88;
+  --color-brand-600: #ffad98;
+  --color-brand-700: #ffad98;
+  --color-brand-800: #ffc3b3;
+  --color-brand-900: #ffd8cf;
+}
+html[data-theme="dark"] body,
+html[data-theme="dark"] .bg-slate-50,
+html[data-theme="dark"] .bg-\[\#f5f6fa\] { background-color: #14171c; }
+html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] .bg-white\/95 { background-color: #20252d; }
+html[data-theme="dark"] .bg-slate-100 { background-color: #2b313a; }
+html[data-theme="dark"] .prose-content { color: #c0c9d5; }
+html[data-theme="dark"] .bg-white\/50 { background-color: rgb(255 255 255 / 3%); }
+html[data-theme="dark"] .bg-ink-950 { background-color: #181b20; }
+html[data-theme="dark"] .bg-brand-700 { background-color: #b94230; }
+html[data-theme="dark"] .hover\:bg-brand-800:hover { background-color: #963426; }
+html[data-theme="dark"] .text-slate-500,
+html[data-theme="dark"] .text-slate-600,
+html[data-theme="dark"] .text-slate-700,
+html[data-theme="dark"] .text-slate-800 { color: #c0c9d5; }
+html[data-theme="dark"] .border-slate-100,
+html[data-theme="dark"] .border-slate-200,
+html[data-theme="dark"] .border-slate-300,
+html[data-theme="dark"] .border-\[\#dedede\],
+html[data-theme="dark"] .border-\[\#e3e3e3\] { border-color: #3c444f; }
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select { background-color: #252b33; color: #f1f3f6; }
+html[data-theme="dark"] .public-header select { background-color: transparent; }
+html[data-theme="dark"] select option { background: #252b33; color: #f1f3f6; }
+html[data-theme="dark"] .bg-amber-50,
+html[data-theme="dark"] .bg-blue-50,
+html[data-theme="dark"] .bg-emerald-50,
+html[data-theme="dark"] .bg-rose-50 { background-color: #303038; }
+html[data-theme="dark"] .text-amber-950,
+html[data-theme="dark"] .text-amber-900,
+html[data-theme="dark"] .text-amber-800,
+html[data-theme="dark"] .text-blue-950,
+html[data-theme="dark"] .text-blue-800,
+html[data-theme="dark"] .text-emerald-800,
+html[data-theme="dark"] .text-rose-800,
+html[data-theme="dark"] .text-rose-900,
+html[data-theme="dark"] .text-rose-950 { color: #e8d8ce; }
+html[data-theme="dark"] .hover\:bg-slate-100:hover,
+html[data-theme="dark"] .hover\:bg-white:hover { background-color: #303742; }
 
 @layer components {
   .prose-content {

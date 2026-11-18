@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { Children } from "react";
 import { LoaderCircle } from "lucide-react";
 import type {
   ButtonHTMLAttributes,
@@ -8,6 +9,7 @@ import type {
   TextareaHTMLAttributes,
 } from "react";
 import { Link } from "react-router-dom";
+import { useLabel, useText } from "@/shared/preferences";
 
 export function cx(...values: Parameters<typeof clsx>): string {
   return clsx(...values);
@@ -60,6 +62,7 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
+  const translateLabel = useLabel();
   return (
     <button
       className={buttonClass(variant, size, className)}
@@ -67,7 +70,7 @@ export function Button({
       {...props}
     >
       {loading ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
-      {children}
+      {Children.map(children, (child) => typeof child === "string" ? translateLabel(child) : child)}
     </button>
   );
 }
@@ -87,9 +90,10 @@ export function LinkButton({
   className,
   children,
 }: LinkButtonProps) {
+  const translateLabel = useLabel();
   return (
     <Link to={to} className={buttonClass(variant, size, className)}>
-      {children}
+      {Children.map(children, (child) => typeof child === "string" ? translateLabel(child) : child)}
     </Link>
   );
 }
@@ -159,17 +163,18 @@ export function PageHeader({
   description?: ReactNode;
   actions?: ReactNode;
 }) {
+  const translateLabel = useLabel();
   return (
     <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div>
         {eyebrow ? (
           <p className="mb-2 text-xs font-bold tracking-[0.18em] text-brand-700 uppercase">
-            {eyebrow}
+            {translateLabel(eyebrow)}
           </p>
         ) : null}
-        <h1 className="text-3xl font-bold tracking-tight text-ink-950 sm:text-4xl">{title}</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-ink-950 sm:text-4xl">{translateLabel(title)}</h1>
         {description ? (
-          <div className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{description}</div>
+          <div className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{typeof description === "string" ? translateLabel(description) : description}</div>
         ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
@@ -192,17 +197,18 @@ export function Field({
   required?: boolean;
   children: ReactNode;
 }) {
+  const translateLabel = useLabel();
   return (
     <div className="space-y-1.5">
       <label htmlFor={htmlFor} className="block text-sm font-semibold text-slate-800">
-        {label}
+        {translateLabel(label)}
         {required ? <span className="ml-1 text-rose-600">*</span> : null}
       </label>
       {children}
-      {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
+      {hint ? <p className="text-xs text-slate-500">{translateLabel(hint)}</p> : null}
       {error ? (
         <p className="text-xs font-medium text-rose-700" role="alert">
-          {error}
+          {translateLabel(error)}
         </p>
       ) : null}
     </div>
@@ -255,11 +261,12 @@ export function Alert({
 }
 
 export function DemoNotice({ children }: { children?: ReactNode }) {
+  const t = useText();
   return (
     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-950">
-      <span className="font-bold">Демо-режим. </span>
+      <span className="font-bold">{t("Демо-режим. ", "Demo mode. ")}</span>
       {children ??
-        "Көрсетілген оқу материалдары мен сандық көрсеткіштер демонстрациялық мақсатта берілген. Ғылыми-әдістемелік мазмұнды тапсырыс беруші бекітеді."}
+        t("Көрсетілген оқу материалдары мен сандық көрсеткіштер демонстрациялық мақсатта берілген. Ғылыми-әдістемелік мазмұнды тапсырыс беруші бекітеді.", "The learning materials and figures are examples. Educational content requires approval.")}
     </div>
   );
 }
@@ -273,10 +280,11 @@ export function EmptyState({
   description?: string;
   action?: ReactNode;
 }) {
+  const translateLabel = useLabel();
   return (
     <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center">
-      <p className="text-base font-semibold text-slate-800">{title}</p>
-      {description ? <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">{description}</p> : null}
+      <p className="text-base font-semibold text-slate-800">{translateLabel(title)}</p>
+      {description ? <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">{translateLabel(description)}</p> : null}
       {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
     </div>
   );
@@ -292,9 +300,10 @@ export function Spinner({ label = "Жүктелуде..." }: { label?: string })
 }
 
 export function PageLoader() {
+  const t = useText();
   return (
     <div className="flex min-h-64 items-center justify-center">
-      <Spinner label="Деректер жүктелуде..." />
+      <Spinner label={t("Деректер жүктелуде...", "Loading...")} />
     </div>
   );
 }
@@ -361,18 +370,19 @@ export function Pagination({
   pageSize: number;
   onPage: (page: number) => void;
 }) {
+  const t = useText();
   const pages = Math.max(1, Math.ceil(total / pageSize));
   if (pages <= 1) return null;
   return (
-    <nav className="mt-6 flex items-center justify-between gap-3 text-sm" aria-label="Беттеу">
+    <nav className="mt-6 flex items-center justify-between gap-3 text-sm" aria-label={t("Беттеу", "Pagination")}>
       <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
-        Алдыңғы
+        {t("Алдыңғы", "Previous")}
       </Button>
       <span className="text-slate-500">
         {page} / {pages}
       </span>
       <Button variant="secondary" size="sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>
-        Келесі
+        {t("Келесі", "Next")}
       </Button>
     </nav>
   );

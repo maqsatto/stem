@@ -18,6 +18,7 @@ import {
   AdminListButton,
   CriteriaEditor,
   DemoField,
+  DraftPreview,
   StatusBadge,
   StatusField,
   TextListEditor,
@@ -27,6 +28,8 @@ import {
 import { HtmlEditor } from "@/shared/components/HtmlEditor";
 import { statusLabels } from "@/shared/format";
 import { useDebouncedValue, useTitle } from "@/shared/hooks";
+import { useLabel, usePreferences, useText } from "@/shared/preferences";
+import { localizeAlgorithm, localizeCompetency } from "@/shared/localizeContent";
 import type {
   AdminAlgorithm,
   AdminCompetency,
@@ -288,6 +291,7 @@ function AlgorithmEditor({
   const [titleEn, setTitleEn] = useState(initial?.title_en ?? "");
   const [summary, setSummary] = useState(initial?.summary ?? "");
   const [body, setBody] = useState(initial?.body ?? "");
+  const [translationEn, setTranslationEn] = useState(initial?.translation_en ?? {});
   const [coverImage, setCoverImage] = useState(initial?.cover_image ?? "");
   const [sortOrder, setSortOrder] = useState(String(initial?.sort_order ?? 0));
   const [status, setStatus] = useState(initial?.status ?? "draft");
@@ -301,6 +305,7 @@ function AlgorithmEditor({
         title_en: titleEn.trim() || null,
         summary,
         body,
+        translation_en: translationEn,
         cover_image: coverImage.trim() || null,
         sort_order: Number(sortOrder) || 0,
         status,
@@ -330,6 +335,7 @@ function AlgorithmEditor({
       onSaved={onSaved}
       onDeleted={() => onSaved("")}
     >
+      <DraftPreview title={title} sections={[{ label: "Сипаттама", html: summary }, { label: "Мазмұн", html: body }]} />
       <form
         className="space-y-4"
         onSubmit={(event) => {
@@ -389,6 +395,13 @@ function AlgorithmEditor({
           />
         </Field>
         <HtmlEditor value={body} onChange={setBody} id="algo-body" label="Толық мәтін (HTML)" />
+        <details className="rounded-lg border border-slate-200 p-4">
+          <summary className="cursor-pointer font-semibold">English translation (optional)</summary>
+          <div className="mt-4 space-y-3">
+            <Field label="Summary (English)" htmlFor="algo-summary-en"><TextArea id="algo-summary-en" value={translationEn.summary ?? ""} onChange={(event) => setTranslationEn({ ...translationEn, summary: event.target.value })} /></Field>
+            <HtmlEditor id="algo-body-en" label="Full text (English)" value={translationEn.body ?? ""} onChange={(value) => setTranslationEn({ ...translationEn, body: value })} />
+          </div>
+        </details>
         <Field
           label="Мұқаба суретінің сілтемесі"
           htmlFor="algo-cover"
@@ -415,7 +428,10 @@ function AlgorithmEditor({
 }
 
 export function AdminAlgorithmsPage() {
-  useTitle("ML алгоритмдері");
+  const t = useText();
+  const label = useLabel();
+  const { language } = usePreferences();
+  useTitle(t("ML алгоритмдері", "ML algorithms"));
   const queryClient = useQueryClient();
   const [editId, setEditId] = useEditParam();
   const isNew = editId === "new";
@@ -439,18 +455,18 @@ export function AdminAlgorithmsPage() {
     <div>
       <PageHeader
         eyebrow="CMS"
-        title="ML алгоритмдері"
-        description="Алгоритм карточкасы, теориялық мәтін, STEM байланысы және ресурстар. Жоба ретінде сақтап, дайын болғанда жариялаңыз."
+        title={t("ML алгоритмдері", "ML algorithms")}
+        description={t("Алгоритм карточкасы, теориялық мәтін, STEM байланысы және ресурстар. Жоба ретінде сақтап, дайын болғанда жариялаңыз.", "Edit algorithm details, STEM connections, and resources. Save a draft and publish when ready.")}
         actions={
           <Button type="button" onClick={() => setEditId("new")}>
             <Plus className="size-4" aria-hidden />
-            Жаңа алгоритм
+            {t("Жаңа алгоритм", "New algorithm")}
           </Button>
         }
       />
       <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
         <Card className="self-start">
-          <h2 className="text-sm font-bold text-ink-950">Алгоритмдер</h2>
+          <h2 className="text-sm font-bold text-ink-950">{t("Алгоритмдер", "Algorithms")}</h2>
           {list.isLoading ? (
             <PageLoader />
           ) : list.isError ? (
@@ -461,13 +477,13 @@ export function AdminAlgorithmsPage() {
                 <AdminListButton
                   key={item.id}
                   active={selectedId === item.id}
-                  title={item.title}
-                  meta={`${statusLabels[item.status] ?? item.status}${item.is_demo ? " · демо" : ""}`}
+                  title={localizeAlgorithm(item, language).title}
+                  meta={`${label(statusLabels[item.status] ?? item.status)}${item.is_demo ? t(" · демо", " · demo") : ""}`}
                   onClick={() => setEditId(item.id)}
                 />
               ))}
               {(list.data ?? []).length === 0 ? (
-                <p className="text-sm text-slate-500">Әзірге алгоритм жоқ.</p>
+                <p className="text-sm text-slate-500">{t("Әзірге алгоритм жоқ.", "No algorithms yet.")}</p>
               ) : null}
             </div>
           )}
@@ -489,7 +505,7 @@ export function AdminAlgorithmsPage() {
               />
             ) : null
           ) : (
-            <AdminEmptyEditor text="Сол жақтан алгоритмді таңдаңыз немесе жаңа жазба жасаңыз." />
+            <AdminEmptyEditor text={t("Сол жақтан алгоритмді таңдаңыз немесе жаңа жазба жасаңыз.", "Select an algorithm or create a new one.")} />
           )}
         </div>
       </div>
@@ -507,6 +523,7 @@ function CompetencyEditor({
   initial?: AdminCompetency;
   onSaved: (id: string) => void;
 }) {
+  const [translationEn, setTranslationEn] = useState<NonNullable<AdminCompetency["translation_en"]>>(initial?.translation_en ?? {});
   const [title, setTitle] = useState(initial?.title ?? "");
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -525,6 +542,7 @@ function CompetencyEditor({
     mutationFn: async () => {
       const payload: Record<string, unknown> = {
         title: title.trim(),
+        translation_en: translationEn,
         description,
         indicators_json: indicators.filter((item) => item.trim()),
         criteria_json: Object.fromEntries(
@@ -558,6 +576,7 @@ function CompetencyEditor({
       onSaved={onSaved}
       onDeleted={() => onSaved("")}
     >
+      <DraftPreview title={title} sections={[{ label: "Сипаттама", html: description }, { label: "Индикаторлар", html: indicators.map((item) => `<p>${item}</p>`).join("") }]} />
       <form
         className="space-y-4"
         onSubmit={(event) => {
@@ -612,6 +631,11 @@ function CompetencyEditor({
           placeholder="Индикатор мәтіні"
         />
         <CriteriaEditor value={criteria} onChange={setCriteria} />
+        <details className="rounded-xl border border-slate-200 p-4"><summary className="cursor-pointer font-semibold">English translation</summary><div className="mt-4 space-y-4">
+          {(["title", "description"] as const).map((field) => <Field key={field} label={`English: ${field}`} htmlFor={`competency-en-${field}`}><TextArea id={`competency-en-${field}`} value={translationEn[field] ?? ""} onChange={(event) => setTranslationEn({ ...translationEn, [field]: event.target.value })} /></Field>)}
+          <TextListEditor label="English indicators" items={translationEn.indicators_json?.length ? translationEn.indicators_json : [""]} onChange={(items) => setTranslationEn({ ...translationEn, indicators_json: items.filter((item) => item.trim()) })} />
+          <p className="text-sm font-semibold">English criteria</p><CriteriaEditor value={translationEn.criteria_json ?? {}} onChange={(value) => setTranslationEn({ ...translationEn, criteria_json: value })} />
+        </div></details>
         <div className="grid gap-4 sm:grid-cols-2">
           <StatusField value={status} onChange={setStatus} />
           <DemoField checked={isDemo} onChange={setIsDemo} />
@@ -626,7 +650,10 @@ function CompetencyEditor({
 }
 
 export function AdminCompetenciesPage() {
-  useTitle("STEM құзыреттіліктері");
+  const t = useText();
+  const label = useLabel();
+  const { language } = usePreferences();
+  useTitle(t("STEM құзыреттіліктері", "STEM competencies"));
   const queryClient = useQueryClient();
   const [editId, setEditId] = useEditParam();
   const isNew = editId === "new";
@@ -650,18 +677,18 @@ export function AdminCompetenciesPage() {
     <div>
       <PageHeader
         eyebrow="CMS"
-        title="STEM құзыреттіліктері"
-        description="Бес бағыт: индикаторлар, деңгей критерийлері және ML алгоритмдерімен байланыс. Диагностика нәтижелері осы құзыреттіліктер бойынша есептеледі."
+        title={t("STEM құзыреттіліктері", "STEM competencies")}
+        description={t("Бес бағыт: индикаторлар, деңгей критерийлері және ML алгоритмдерімен байланыс. Диагностика нәтижелері осы құзыреттіліктер бойынша есептеледі.", "Manage indicators, level criteria, and links to ML algorithms for the five competencies.")}
         actions={
           <Button type="button" onClick={() => setEditId("new")}>
             <Plus className="size-4" aria-hidden />
-            Жаңа құзыреттілік
+            {t("Жаңа құзыреттілік", "New competency")}
           </Button>
         }
       />
       <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
         <Card className="self-start">
-          <h2 className="text-sm font-bold text-ink-950">Құзыреттіліктер</h2>
+          <h2 className="text-sm font-bold text-ink-950">{t("Құзыреттіліктер", "Competencies")}</h2>
           {list.isLoading ? (
             <PageLoader />
           ) : list.isError ? (
@@ -672,8 +699,8 @@ export function AdminCompetenciesPage() {
                 <AdminListButton
                   key={item.id}
                   active={selectedId === item.id}
-                  title={item.title}
-                  meta={`${statusLabels[item.status] ?? item.status}${item.is_demo ? " · демо" : ""}`}
+                  title={localizeCompetency(item, language).title}
+                  meta={`${label(statusLabels[item.status] ?? item.status)}${item.is_demo ? t(" · демо", " · demo") : ""}`}
                   onClick={() => setEditId(item.id)}
                 />
               ))}
@@ -696,7 +723,7 @@ export function AdminCompetenciesPage() {
               />
             ) : null
           ) : (
-            <AdminEmptyEditor text="Құзыреттілікті таңдаңыз немесе жаңасын жасаңыз." />
+            <AdminEmptyEditor text={t("Құзыреттілікті таңдаңыз немесе жаңасын жасаңыз.", "Select a competency or create a new one.")} />
           )}
         </div>
       </div>

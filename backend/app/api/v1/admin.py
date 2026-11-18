@@ -180,6 +180,7 @@ def normalize_options(options: list) -> list[TaskOption]:
         result.append(
             TaskOption(
                 label=sanitize_html(label),
+                label_en=sanitize_html(option.label_en),
                 is_correct=option.is_correct,
                 order_no=option.order_no or index,
             )
@@ -192,9 +193,12 @@ def assessment_questions_payload(
 ) -> list[AssessmentQuestion]:
     result = []
     for index, question in enumerate(questions, start=1):
-        competency_id = question.competency_id
-        if competency_id is not None and db.get(Competency, competency_id) is None:
-            raise ApiError(422, "invalid_competency", "Сұрақтың құзыреттілігі табылмады.")
+        competency_ids = list(dict.fromkeys(question.competency_ids or ([question.competency_id] if question.competency_id else [])))
+        if any(key not in competency_ids or not 0 < weight <= 100 for key, weight in question.competency_weights.items()):
+            raise ApiError(422, "invalid_competency_weight", "Құзыреттілік салмағы 0 мен 100 аралығында болуы керек.")
+        for competency_id in competency_ids:
+            if db.get(Competency, competency_id) is None:
+                raise ApiError(422, "invalid_competency", "Сұрақтың құзыреттілігі табылмады.")
         options: list[dict] = []
         if question.type in {"single_choice", "multiple_choice"}:
             for option_index, option in enumerate(question.options, start=1):
@@ -205,6 +209,7 @@ def assessment_questions_payload(
                     {
                         "id": str(option.get("id") or uuid.uuid4().hex),
                         "label": sanitize_html(label),
+                        "label_en": sanitize_html(str(option.get("label_en", ""))),
                         "is_correct": bool(option.get("is_correct")),
                         "order_no": option_index,
                     }
@@ -213,7 +218,10 @@ def assessment_questions_payload(
             AssessmentQuestion(
                 type=question.type,
                 body=sanitize_html(question.body),
-                competency_id=competency_id,
+                body_en=sanitize_html(question.body_en),
+                competency_id=competency_ids[0] if competency_ids else None,
+                competency_ids_json=[str(item) for item in competency_ids],
+                competency_weights_json={str(key): value for key, value in question.competency_weights.items()},
                 points=question.points,
                 options_json=options,
                 order_no=question.order_no or index,
@@ -343,6 +351,7 @@ def create_algorithm(
         title_en=payload.title_en,
         summary=sanitize_html(payload.summary),
         body=sanitize_html(payload.body),
+        translation_en={key: sanitize_html(value) for key, value in payload.translation_en.model_dump().items()},
         cover_image=payload.cover_image,
         status=payload.status,
         sort_order=payload.sort_order,
@@ -377,6 +386,8 @@ def update_algorithm(
     for field in ["summary", "body"]:
         if field in data:
             setattr(obj, field, sanitize_html(data[field]))
+    if "translation_en" in data:
+        obj.translation_en = {key: sanitize_html(value) for key, value in (data["translation_en"] or {}).items()}
     if "status" in data and data["status"] != obj.status:
         if data["status"] == ContentStatus.published.value:
             obj.status = ContentStatus.published.value
@@ -450,6 +461,10 @@ def admin_competency_detail(
     }
 
 
+def sanitize_competency_translation(data: dict) -> dict:
+    return {key: ([sanitize_html(item) for item in value] if isinstance(value, list) else {k: sanitize_html(v) for k, v in value.items()} if isinstance(value, dict) else sanitize_html(value)) for key, value in data.items()}
+
+
 @router.post("/competencies", status_code=201)
 def create_competency(
     payload: CompetencyCreateIn, db: Session = Depends(get_db), user: User = admin_only
@@ -457,6 +472,7 @@ def create_competency(
     obj = Competency(
         title=payload.title.strip(),
         slug=unique_slug(db, Competency, payload.title, payload.slug),
+        translation_en=sanitize_competency_translation(payload.translation_en.model_dump()),
         description=sanitize_html(payload.description),
         indicators_json=payload.indicators_json,
         criteria_json=payload.criteria_json,
@@ -483,6 +499,8 @@ def update_competency(
 ):
     obj = get_admin_entity(db, "competencies", competency_id)
     data = payload.model_dump(exclude_unset=True)
+    if "translation_en" in data:
+        obj.translation_en = sanitize_competency_translation(data["translation_en"] or {})
     if "title" in data:
         obj.title = data["title"].strip()
     if "slug" in data:
@@ -519,6 +537,9 @@ def delete_competency(
     obj = get_admin_entity(db, "competencies", competency_id)
     if obj.status == ContentStatus.published.value:
         raise ApiError(409, "archive_instead", "Жарияланған құзыреттілікті жою мүмкін емес. Архивтеңіз.")
+    questions = db.execute(select(AssessmentQuestion)).scalars().all()
+    if any(str(competency_id) in (question.competency_ids_json or []) for question in questions):
+        raise ApiError(409, "competency_in_use", "Құзыреттілік диагностикада қолданылады.")
     db.delete(obj)
     db.commit()
     return MessageOut(message="Құзыреттілік жойылды.")
@@ -573,6 +594,7 @@ def create_lesson(payload: LessonCreateIn, db: Session = Depends(get_db), user: 
         body=sanitize_html(payload.body),
         goal=sanitize_html(payload.goal),
         reflection=sanitize_html(payload.reflection),
+        translation_en={key: sanitize_html(value) for key, value in payload.translation_en.model_dump().items()},
         duration_min=payload.duration_min,
         order_no=payload.order_no,
         status=payload.status,
@@ -609,6 +631,8 @@ def update_lesson(
     for field in ["summary", "body", "goal", "reflection"]:
         if field in data:
             setattr(obj, field, sanitize_html(data[field]))
+    if "translation_en" in data:
+        obj.translation_en = {key: sanitize_html(value) for key, value in (data["translation_en"] or {}).items()}
     for field in ["duration_min", "order_no", "is_demo"]:
         if field in data:
             setattr(obj, field, data[field])
@@ -654,6 +678,8 @@ def delete_lesson(lesson_id: uuid.UUID, db: Session = Depends(get_db), user: Use
 
 
 def apply_task_fields(db: Session, obj: Task, data: dict) -> None:
+    if "translation_en" in data:
+        obj.translation_en = sanitize_project_translation(data["translation_en"] or {})
     if "title" in data:
         obj.title = data["title"].strip()
     if "slug" in data:
@@ -686,6 +712,7 @@ def admin_tasks(db: Session = Depends(get_db), user: User = admin_only):
                 {
                     "id": str(option.id),
                     "label": option.label,
+                    "label_en": option.label_en,
                     "is_correct": option.is_correct,
                     "order_no": option.order_no,
                 }
@@ -707,6 +734,7 @@ def admin_task_detail(task_id: uuid.UUID, db: Session = Depends(get_db), user: U
             {
                 "id": str(option.id),
                 "label": option.label,
+                "label_en": option.label_en,
                 "is_correct": option.is_correct,
                 "order_no": option.order_no,
             }
@@ -731,6 +759,7 @@ def create_task(payload: TaskCreateIn, db: Session = Depends(get_db), user: User
         project_id=payload.project_id,
         type=payload.type,
         difficulty=payload.difficulty,
+        translation_en=sanitize_project_translation(payload.translation_en.model_dump()),
         instructions=sanitize_html(payload.instructions),
         body=sanitize_html(payload.body),
         max_score=payload.max_score,
@@ -772,12 +801,25 @@ def update_task(
     if "competency_ids" in data:
         set_competencies(db, obj, data["competency_ids"] or [], TaskCompetency, "task_id")
     if "options" in data:
-        for option in list(obj.options):
-            db.delete(option)
+        existing = {option.id: option for option in obj.options}
+        retained = set()
+        incoming = payload.options or []
+        normalized = normalize_options(incoming)
+        for source, option in zip(incoming, normalized, strict=True):
+            if source.id:
+                if source.id not in existing or source.id in retained:
+                    raise ApiError(422, "invalid_option", "Жауап нұсқасы табылмады.")
+                retained.add(source.id)
+                target = existing[source.id]
+                target.label, target.label_en = option.label, option.label_en
+                target.is_correct, target.order_no = option.is_correct, option.order_no
+            else:
+                option.task_id = obj.id
+                db.add(option)
+        for option_id, option in existing.items():
+            if option_id not in retained:
+                db.delete(option)
         db.flush()
-        for option in normalize_options(payload.options or []):
-            option.task_id = obj.id
-            db.add(option)
         db.expire(obj, ["options"])
     db.flush()
     db.refresh(obj)
@@ -819,7 +861,13 @@ def delete_task(task_id: uuid.UUID, db: Session = Depends(get_db), user: User = 
 # ---------------------------------------------------------------------------
 
 
+def sanitize_project_translation(data: dict) -> dict:
+    return {key: [sanitize_html(item) for item in value] if isinstance(value, list) else sanitize_html(value) for key, value in data.items()}
+
+
 def apply_project_fields(db: Session, obj: Project, data: dict) -> None:
+    if "translation_en" in data:
+        obj.translation_en = sanitize_project_translation(data["translation_en"] or {})
     if "title" in data:
         obj.title = data["title"].strip()
     if "slug" in data:
@@ -876,6 +924,7 @@ def create_project(payload: ProjectCreateIn, db: Session = Depends(get_db), user
         title=payload.title.strip(),
         slug=unique_slug(db, Project, payload.title, payload.slug),
         algorithm_id=payload.algorithm_id,
+        translation_en=sanitize_project_translation(payload.translation_en.model_dump()),
         summary=sanitize_html(payload.summary),
         problem=sanitize_html(payload.problem),
         goal=sanitize_html(payload.goal),
@@ -989,6 +1038,7 @@ def create_assessment(
         kind=payload.kind,
         version=payload.version,
         methodology_key=payload.methodology_key,
+        translation_en={key: sanitize_html(value) for key, value in payload.translation_en.model_dump().items()},
         description=sanitize_html(payload.description),
         instructions=sanitize_html(payload.instructions),
         scoring_config_json=payload.scoring_config_json or default_scoring_config(db),
@@ -1032,6 +1082,8 @@ def update_assessment(
             "assessment_has_attempts",
             "Аяқталған талпыныстар бар. Құрылымды өзгерту үшін жаңа нұсқа жасаңыз.",
         )
+    if "translation_en" in data:
+        obj.translation_en = {key: sanitize_html(value) for key, value in (data["translation_en"] or {}).items()}
     if "name" in data:
         obj.name = data["name"].strip()
     if "slug" in data:
@@ -1090,6 +1142,7 @@ def new_assessment_version(
         version=max(existing_versions, default=obj.version) + 1,
         methodology_key=obj.methodology_key,
         description=obj.description,
+        translation_en=dict(obj.translation_en or {}),
         instructions=obj.instructions,
         scoring_config_json=obj.scoring_config_json,
         attempts_limit=obj.attempts_limit,
@@ -1105,7 +1158,10 @@ def new_assessment_version(
                 assessment_id=clone.id,
                 type=question.type,
                 body=question.body,
+                body_en=question.body_en,
                 competency_id=question.competency_id,
+                competency_ids_json=list(question.competency_ids_json or []),
+                competency_weights_json=dict(question.competency_weights_json or {}),
                 points=question.points,
                 options_json=question.options_json,
                 order_no=question.order_no,

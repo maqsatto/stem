@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, require_roles
@@ -12,6 +13,7 @@ from app.db.session import get_db
 from app.models.assessment import Assessment
 from app.models.classroom import (
     Assignment,
+    AssignmentProgress,
     Classroom,
     ClassroomMember,
     Submission,
@@ -195,6 +197,7 @@ def assignment_out(db: Session, assignment: Assignment, student: User | None = N
         "content_type": assignment.content_type,
         "content_id": assignment.content_id,
         "content_title": getattr(content, "title", None) or getattr(content, "name", "Материал"),
+        "content_title_en": (getattr(content, "translation_en", None) or {}).get("name" if isinstance(content, Assessment) else "title") or None,
         "content_slug": getattr(content, "slug", None),
         "due_at": assignment.due_at,
         "status": assignment.status,
@@ -231,7 +234,8 @@ def assignment_out(db: Session, assignment: Assignment, student: User | None = N
             ).scalars().first()
             payload["student_status"] = attempt.status if attempt else "not_started"
         else:
-            payload["student_status"] = "not_started"
+            progress = db.get(AssignmentProgress, (assignment.id, student.id))
+            payload["student_status"] = "in_progress" if progress else "not_started"
     return payload
 
 
@@ -521,6 +525,28 @@ def update_assignment(
     return assignment_out(db, assignment)
 
 
+@router.post("/assignments/{assignment_id}/start", response_model=dict)
+def start_assignment(assignment_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(require_roles(Role.student.value))):
+    assignment = db.get(Assignment, assignment_id)
+    if assignment is None:
+        raise not_found("Тапсырма")
+    ensure_classroom_access(db, user, assignment.classroom_id)
+    if assignment.status != AssignmentStatus.active.value:
+        raise ApiError(409, "assignment_closed", "Бұл тапсырма жабылған.")
+    if assignment.content_type not in {"task", "project"}:
+        raise ApiError(422, "invalid_assignment", "Бұл материал үшін бастау қолжетімсіз.")
+    existing = submission_for(db, assignment.id, user.id)
+    if existing is not None:
+        return {"status": existing.status}
+    db.execute(
+        insert(AssignmentProgress)
+        .values(assignment_id=assignment.id, student_id=user.id, started_at=datetime.now(UTC))
+        .on_conflict_do_nothing(index_elements=["assignment_id", "student_id"])
+    )
+    db.commit()
+    return {"status": "in_progress"}
+
+
 @router.post("/assignments/{assignment_id}/submissions", response_model=SubmissionOut)
 def submit_assignment(
     assignment_id: uuid.UUID,
@@ -659,15 +685,47 @@ def list_assignment_submissions(
         .where(Submission.assignment_id == assignment.id)
         .order_by(Submission.submitted_at.desc())
     ).scalars().all()
+    by_student = {item.student_id: item for item in submissions}
+    members = db.execute(
+        select(ClassroomMember).where(ClassroomMember.classroom_id == classroom.id)
+    ).scalars().all()
+    attempt_statuses: dict[uuid.UUID, str] = {}
+    progress_rows = db.execute(select(AssignmentProgress).where(AssignmentProgress.assignment_id == assignment.id)).scalars().all()
+    for progress in progress_rows:
+        attempt_statuses[progress.student_id] = "in_progress"
+    if assignment.content_type == AssignmentContentType.assessment.value:
+        from app.models.assessment import AssessmentAttempt
+
+        attempts = db.execute(
+            select(AssessmentAttempt)
+            .where(AssessmentAttempt.assignment_id == assignment.id)
+            .order_by(AssessmentAttempt.attempt_no.desc())
+        ).scalars().all()
+        for attempt in attempts:
+            attempt_statuses.setdefault(attempt.student_id, attempt.status)
+    students = [
+        {
+            "student_id": member.student_id,
+            "display_name": member.student.display_name,
+            "status": by_student[member.student_id].status if member.student_id in by_student else attempt_statuses.get(member.student_id, "not_started"),
+            "submission_id": by_student[member.student_id].id if member.student_id in by_student else None,
+        }
+        for member in members
+    ]
+    if assignment.content_type == AssignmentContentType.assessment.value:
+        submitted_count = sum(row["status"] == "submitted" for row in students)
+        reviewed_count = submitted_count
+    else:
+        submitted_count = len(submissions)
+        reviewed_count = sum(item.status == SubmissionStatus.reviewed.value for item in submissions)
     return SubmissionListOut(
         assignment_id=assignment.id,
         content_title=getattr(content, "title", None) or getattr(content, "name", "Материал"),
         total_students=member_count(db, classroom.id),
-        submitted_count=len(submissions),
-        reviewed_count=len(
-            [item for item in submissions if item.status == SubmissionStatus.reviewed.value]
-        ),
+        submitted_count=submitted_count,
+        reviewed_count=reviewed_count,
         items=[SubmissionOut(**submission_out(db, item, reveal_answers=True)) for item in submissions],
+        students=students,
     )
 
 

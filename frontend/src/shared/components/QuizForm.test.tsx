@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { QuizForm } from "@/shared/components/QuizForm";
+import { PreferencesProvider } from "@/shared/preferences";
 import type { AssessmentQuestion } from "@/shared/types";
 
 const questions: AssessmentQuestion[] = [
@@ -46,6 +47,15 @@ const questions: AssessmentQuestion[] = [
 ];
 
 describe("QuizForm", () => {
+  it("uses English controls and validation when English is selected", async () => {
+    localStorage.setItem("mlstem-language", "en");
+    const user = userEvent.setup();
+    render(<PreferencesProvider><QuizForm questions={[questions[0]]} onSubmit={vi.fn()} onSave={vi.fn()} /></PreferencesProvider>);
+    expect(screen.getByText("Select one answer.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save answers" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Submit answers" }));
+    expect(screen.getByText("Answer every question before submitting.")).toBeInTheDocument();
+  });
   it("saves incomplete answers as a draft without submitting the test", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);

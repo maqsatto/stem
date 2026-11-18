@@ -4,6 +4,8 @@ import { useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { errorMessage, http } from "@/shared/api";
+import { RichTextRenderer } from "@/shared/components/RichTextRenderer";
+import { useLabel, useText } from "@/shared/preferences";
 import { statusLabels } from "@/shared/format";
 import type { ContentStatus, RubricItem, TaskOption } from "@/shared/types";
 import {
@@ -41,8 +43,10 @@ export function editorPath(plural: string, id: string): string {
 }
 
 export function StatusBadge({ status }: { status: ContentStatus | string }) {
+  const label = useLabel();
+  const t = useText();
   const tone = status === "published" ? "green" : status === "archived" ? "slate" : "amber";
-  return <Badge tone={tone}>{statusLabels[status] ?? status}</Badge>;
+  return <Badge tone={tone}>{status === "draft" ? t("Жоба", "Draft") : label(statusLabels[status] ?? status)}</Badge>;
 }
 
 export function AdminEditorCard({
@@ -68,6 +72,7 @@ export function AdminEditorCard({
   onDeleted: () => void;
   children: ReactNode;
 }) {
+  const t = useText();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -76,7 +81,7 @@ export function AdminEditorCard({
     mutationFn: () => http.post<{ id: string; status: string }>(`/admin/${resource}/${id}/publish`),
     onSuccess: () => {
       setError(null);
-      setNotice("Материал жарияланды.");
+      setNotice(t("Материал жарияланды.", "Material published."));
       void queryClient.invalidateQueries({ queryKey: ["admin"] });
       if (id) onSaved(id);
     },
@@ -98,19 +103,19 @@ export function AdminEditorCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-bold tracking-[0.18em] text-brand-700 uppercase">
-            {id ? "Өңдеу" : "Жаңа жазба"}
+            {id ? t("Өңдеу", "Edit") : t("Жаңа жазба", "New item")}
           </p>
-          <h2 className="mt-1 truncate text-xl font-bold text-ink-950">{title || "Атауын енгізіңіз"}</h2>
+          <h2 className="mt-1 truncate text-xl font-bold text-ink-950">{title || t("Атауын енгізіңіз", "Enter a title")}</h2>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {status ? <StatusBadge status={status} /> : <Badge tone="slate">Жоба</Badge>}
-            {isDemo ? <Badge tone="amber">Демо</Badge> : null}
+            {status ? <StatusBadge status={status} /> : <Badge tone="slate">{t("Жоба", "Draft")}</Badge>}
+            {isDemo ? <Badge tone="amber">{t("Демо", "Demo")}</Badge> : null}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {previewHref ? (
             <LinkButton to={previewHref} variant="ghost" size="sm">
               <Eye className="size-4" aria-hidden />
-              Алдын ала қарау
+              {t("Алдын ала қарау", "Preview")}
             </LinkButton>
           ) : null}
           {extraActions}
@@ -123,7 +128,7 @@ export function AdminEditorCard({
               onClick={() => publish.mutate()}
             >
               <CheckCircle2 className="size-4" aria-hidden />
-              Жариялау
+              {t("Жариялау", "Publish")}
             </Button>
           ) : null}
           {id ? (
@@ -136,7 +141,7 @@ export function AdminEditorCard({
               onClick={() => {
                 if (
                   window.confirm(
-                    "Жазбаны жоюды растайсыз ба? Жарияланған материалды жою мүмкін емес — оны архивтеңіз.",
+                    t("Жазбаны жоюды растайсыз ба? Жарияланған материалды жою мүмкін емес — оны архивтеңіз.", "Delete this item? Published material must be archived instead."),
                   )
                 ) {
                   remove.mutate();
@@ -144,7 +149,7 @@ export function AdminEditorCard({
               }}
             >
               <Trash2 className="size-4" aria-hidden />
-              Жою
+              {t("Жою", "Delete")}
             </Button>
           ) : null}
         </div>
@@ -182,6 +187,7 @@ export function StatusField({
   value: ContentStatus;
   onChange: (value: ContentStatus) => void;
 }) {
+  const t = useText();
   return (
     <Field label="Мәртебе" htmlFor="admin-status">
       <Select
@@ -189,9 +195,9 @@ export function StatusField({
         value={value}
         onChange={(event) => onChange(event.target.value as ContentStatus)}
       >
-        <option value="draft">Жоба</option>
-        <option value="published">Жарияланған</option>
-        <option value="archived">Мұрағат</option>
+        <option value="draft">{t("Жоба", "Draft")}</option>
+        <option value="published">{t("Жарияланған", "Published")}</option>
+        <option value="archived">{t("Мұрағат", "Archived")}</option>
       </Select>
     </Field>
   );
@@ -204,6 +210,7 @@ export function DemoField({
   checked: boolean;
   onChange: (checked: boolean) => void;
 }) {
+  const t = useText();
   return (
     <label className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-950">
       <input
@@ -213,10 +220,9 @@ export function DemoField({
         className="mt-0.5 size-4 accent-amber-600"
       />
       <span>
-        <span className="font-semibold">Демо-контент</span>
+        <span className="font-semibold">{t("Демо-контент", "Demo content")}</span>
         <span className="mt-0.5 block text-xs leading-5 text-amber-800">
-          Ақырындап «Демо» белгісі көрсетіледі. Нақты ғылыми-әдістемелік мазмұнды тапсырыс
-          беруші бекіткенде белгіні алып тастаңыз.
+          {t("«Демо» белгісі көрсетіледі. Нақты ғылыми-әдістемелік мазмұнды тапсырыс беруші бекіткенде белгіні алып тастаңыз.", "Show the demo badge. Remove it after the customer approves the final educational content.")}
         </span>
       </span>
     </label>
@@ -236,9 +242,11 @@ export function TextListEditor({
   onChange: (items: string[]) => void;
   placeholder?: string;
 }) {
+  const t = useText();
+  const translateLabel = useLabel();
   return (
     <div>
-      <p className="text-sm font-semibold text-slate-800">{label}</p>
+      <p className="text-sm font-semibold text-slate-800">{translateLabel(label)}</p>
       {hint ? <p className="mt-0.5 text-xs text-slate-500">{hint}</p> : null}
       <div className="mt-2 space-y-2">
         {items.map((item, index) => (
@@ -256,7 +264,7 @@ export function TextListEditor({
               type="button"
               size="sm"
               variant="ghost"
-              aria-label="Тармақты жою"
+              aria-label={t("Тармақты жою", "Remove item")}
               onClick={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))}
             >
               <Trash2 className="size-4" aria-hidden />
@@ -270,7 +278,7 @@ export function TextListEditor({
           onClick={() => onChange([...items, ""])}
         >
           <Plus className="size-4" aria-hidden />
-          Тармақ қосу
+          {t("Тармақ қосу", "Add item")}
         </Button>
       </div>
     </div>
@@ -284,11 +292,12 @@ export function RubricEditor({
   items: RubricItem[];
   onChange: (items: RubricItem[]) => void;
 }) {
+  const t = useText();
   return (
     <div>
-      <p className="text-sm font-semibold text-slate-800">Бағалау рубрикасы</p>
+      <p className="text-sm font-semibold text-slate-800">{t("Бағалау рубрикасы", "Assessment rubric")}</p>
       <p className="mt-0.5 text-xs text-slate-500">
-        Критерийлер мен балдар. Балдар жиыны максималды балға сәйкес болғаны жөн.
+        {t("Критерийлер мен балдар. Балдар жиыны максималды балға сәйкес болғаны жөн.", "Criteria and points. Their sum should match the maximum score.")}
       </p>
       <div className="mt-2 space-y-2">
         {items.map((item, index) => (
@@ -423,6 +432,8 @@ export function CompetencyPicker({
 }
 
 export interface OptionDraft {
+  id?: string;
+  label_en?: string;
   label: string;
   is_correct: boolean;
   order_no: number;
@@ -434,12 +445,14 @@ export function OptionEditor({
   onChange,
   labels,
   hint,
+  english = false,
 }: {
   options: OptionDraft[];
   multiple: boolean;
   onChange: (options: OptionDraft[]) => void;
   labels: { add: string; correct: string; empty: string };
   hint?: string;
+  english?: boolean;
 }) {
   return (
     <div>
@@ -463,6 +476,7 @@ export function OptionEditor({
               placeholder={`${index + 1}-нұсқа`}
               className="min-w-40 flex-1"
             />
+            {english ? <TextInput value={option.label_en ?? ""} onChange={(event) => { const next = [...options]; next[index] = { ...option, label_en: event.target.value }; onChange(next); }} placeholder="English option" aria-label={`English option ${index + 1}`} className="min-w-40 flex-1" /> : null}
             <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
               <input
                 type={multiple ? "checkbox" : "radio"}
@@ -515,7 +529,9 @@ export function OptionEditor({
 
 export function optionFromApi(option: TaskOption): OptionDraft {
   return {
+    id: option.id,
     label: option.label,
+    label_en: option.label_en,
     is_correct: Boolean(option.is_correct),
     order_no: option.order_no,
   };
@@ -547,4 +563,15 @@ export function AdminListButton({
       {meta ? <span className="mt-0.5 block text-xs text-slate-500">{meta}</span> : null}
     </button>
   );
+}
+
+/** Live preview also works for new and unpublished content. */
+export function DraftPreview({ title, sections }: { title: string; sections: { label: string; html: string }[] }) {
+  return <details className="mb-5 rounded-xl border border-brand-200 bg-brand-50 p-4">
+    <summary className="cursor-pointer font-semibold text-brand-800">Алдын ала қарау / Preview</summary>
+    <article className="mt-4 space-y-4 rounded-xl bg-white p-5">
+      <h2 className="text-xl font-bold text-ink-950">{title || "Атауы / Title"}</h2>
+      {sections.filter((section) => section.html.trim()).map((section, index) => <section key={`${section.label}-${index}`}><h3 className="mb-2 font-semibold">{section.label}</h3><RichTextRenderer html={section.html} /></section>)}
+    </article>
+  </details>;
 }

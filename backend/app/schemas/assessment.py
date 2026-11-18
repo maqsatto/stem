@@ -7,6 +7,7 @@ from app.schemas.common import ORMModel
 
 
 class OptionPublic(BaseModel):
+    label_en: str = ""
     id: str
     label: str
     order_no: int
@@ -14,17 +15,21 @@ class OptionPublic(BaseModel):
 
 
 class QuestionStudentOut(BaseModel):
+    body_en: str = ""
     id: uuid.UUID
     type: str
     body: str
     points: int
     competency_id: uuid.UUID | None = None
+    competency_ids: list[uuid.UUID] = []
+    competency_weights: dict[str, float] = {}
     competency_title: str | None = None
     order_no: int
     options: list[OptionPublic] = []
 
 
 class AssessmentCard(ORMModel):
+    translation_en: dict[str, str] = {}
     id: uuid.UUID
     name: str
     slug: str
@@ -72,6 +77,7 @@ class AttemptAnswerOut(BaseModel):
 
 
 class CompetencyScoreOut(BaseModel):
+    title_en: str | None = None
     competency_id: uuid.UUID
     title: str
     slug: str
@@ -101,6 +107,7 @@ class AttemptOut(BaseModel):
 
 
 class ComparisonRow(BaseModel):
+    title_en: str | None = None
     competency_id: uuid.UUID
     title: str
     slug: str
@@ -164,9 +171,12 @@ class ClassResultsOut(BaseModel):
 
 
 class AssessmentQuestionIn(BaseModel):
+    body_en: str = ""
     type: str = Field(pattern="^(single_choice|multiple_choice|open_text)$")
     body: str = Field(min_length=1)
     competency_id: uuid.UUID | None = None
+    competency_ids: list[uuid.UUID] = Field(default_factory=list, max_length=5)
+    competency_weights: dict[uuid.UUID, float] = Field(default_factory=dict)
     points: int = Field(default=1, ge=1, le=100)
     options: list[dict] = []
     order_no: int = 1
@@ -180,7 +190,14 @@ class AssessmentQuestionIn(BaseModel):
         return value
 
 
+class AssessmentEnglishIn(BaseModel):
+    name: str = ""
+    description: str = ""
+    instructions: str = ""
+
+
 class AssessmentCreateIn(BaseModel):
+    translation_en: AssessmentEnglishIn = Field(default_factory=AssessmentEnglishIn)
     name: str = Field(min_length=3, max_length=250)
     slug: str | None = None
     kind: str = Field(pattern="^(pre|post|quiz)$")
@@ -197,6 +214,7 @@ class AssessmentCreateIn(BaseModel):
 
 
 class AssessmentUpdateIn(BaseModel):
+    translation_en: AssessmentEnglishIn | None = None
     name: str | None = Field(default=None, min_length=3, max_length=250)
     status: str | None = Field(default=None, pattern="^(draft|published|archived)$")
     slug: str | None = None

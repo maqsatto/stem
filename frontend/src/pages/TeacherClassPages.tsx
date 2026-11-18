@@ -19,6 +19,8 @@ import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { downloadFile, errorMessage, http } from "@/shared/api";
+import { answerLabels } from "@/shared/answerLabels";
+import { pairedClassAverages } from "@/shared/classAverages";
 import { AssignToClass } from "@/shared/components/ContentBits";
 import { DiagnosticsChart } from "@/shared/components/DiagnosticsChart";
 import { GradeRubric } from "@/shared/components/GradeRubric";
@@ -32,6 +34,8 @@ import {
   formatPercent,
 } from "@/shared/format";
 import { useTitle } from "@/shared/hooks";
+import { usePreferences, useText } from "@/shared/preferences";
+import { localizeAssessment, localizeLesson, localizeProject, localizeTask } from "@/shared/localizeContent";
 import type {
   AssessmentCard,
   Assignment,
@@ -40,10 +44,12 @@ import type {
   ClassroomDetail,
   Page,
   ProjectCard,
+  ProjectDetail,
   Submission,
   SubmissionList,
   LessonCard,
   TaskCard,
+  TaskDetail,
 } from "@/shared/types";
 import {
   Alert,
@@ -63,14 +69,15 @@ import {
   TextInput,
 } from "@/shared/ui";
 
-function assignmentStatusBadge(status: string | null | undefined) {
-  if (status === "not_started") return <Badge tone="slate">Басталмаған</Badge>;
-  if (status === "in_progress") return <Badge tone="blue">Орындалуда</Badge>;
-  if (status === "submitted") return <Badge tone="amber">Тапсырылды</Badge>;
-  if (status === "reviewed") return <Badge tone="green">Тексерілді</Badge>;
-  if (status === "returned") return <Badge tone="rose">Қайта өңдеуге</Badge>;
-  if (status === "active") return <Badge tone="green">Белсенді</Badge>;
-  if (status === "closed") return <Badge tone="slate">Жабық</Badge>;
+function AssignmentStatusBadge({ status }: { status: string | null | undefined }) {
+  const t = useText();
+  if (status === "not_started") return <Badge tone="slate">{t("Басталмаған", "Not started")}</Badge>;
+  if (status === "in_progress") return <Badge tone="blue">{t("Орындалуда", "In progress")}</Badge>;
+  if (status === "submitted") return <Badge tone="amber">{t("Тапсырылды", "Submitted")}</Badge>;
+  if (status === "reviewed") return <Badge tone="green">{t("Тексерілді", "Reviewed")}</Badge>;
+  if (status === "returned") return <Badge tone="rose">{t("Қайта өңдеуге", "Returned")}</Badge>;
+  if (status === "active") return <Badge tone="green">{t("Белсенді", "Active")}</Badge>;
+  if (status === "closed") return <Badge tone="slate">{t("Жабық", "Closed")}</Badge>;
   return <Badge tone="slate">—</Badge>;
 }
 
@@ -83,7 +90,8 @@ function toLocalInput(value?: string | null): string {
 }
 
 export function TeacherClassesPage() {
-  useTitle("Сыныптар");
+  const t = useText();
+  useTitle(t("Сыныптар", "Classes"));
   const queryClient = useQueryClient();
   const classes = useQuery({
     queryKey: ["classes", "teacher"],
@@ -106,40 +114,40 @@ export function TeacherClassesPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Сыныптар"
-        title="Сыныптарды басқару"
-        description="Сынып жасаңыз, қосылу кодын оқушыларға беріңіз және тағайындауларды осы жерден бақылаңыз."
+        eyebrow={t("Сыныптар", "Classes")}
+        title={t("Сыныптарды басқару", "Manage classes")}
+        description={t("Сынып жасаңыз, қосылу кодын оқушыларға беріңіз және тағайындауларды осы жерден бақылаңыз.", "Create a class, share its join code with students, and manage assignments here.")}
       />
       <div className="grid gap-6 lg:grid-cols-[22rem_1fr]">
         <Card>
-          <h2 className="text-lg font-bold text-ink-950">Жаңа сынып</h2>
+          <h2 className="text-lg font-bold text-ink-950">{t("Жаңа сынып", "New class")}</h2>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            Атауы сынып журналындағыдай болсын, мысалы «9-А сыныбы».
+            {t("Атауы сынып журналындағыдай болсын, мысалы «9-А сыныбы».", "Use the class name from your register, for example Class 9-A.")}
           </p>
           <form
             className="mt-4 space-y-3"
             onSubmit={(event) => {
               event.preventDefault();
               if (title.trim().length < 2) {
-                setError("Сынып атауы кемінде 2 таңба болуы керек.");
+                setError(t("Сынып атауы кемінде 2 таңба болуы керек.", "The class name must contain at least two characters."));
                 return;
               }
               create.mutate();
             }}
           >
-            <Field label="Сынып атауы" htmlFor="class-title" required>
+            <Field label={t("Сынып атауы", "Class name")} htmlFor="class-title" required>
               <TextInput
                 id="class-title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="9-А сыныбы"
+                placeholder={t("9-А сыныбы", "Class 9-A")}
                 maxLength={160}
               />
             </Field>
             {error ? <Alert tone="error">{error}</Alert> : null}
             <Button type="submit" loading={create.isPending} className="w-full">
               <Plus className="size-4" aria-hidden />
-              Сынып жасау
+              {t("Сынып жасау", "Create class")}
             </Button>
           </form>
         </Card>
@@ -151,8 +159,8 @@ export function TeacherClassesPage() {
             <Alert tone="error">{errorMessage(classes.error)}</Alert>
           ) : (classes.data?.items.length ?? 0) === 0 ? (
             <EmptyState
-              title="Сынып әлі жасалмаған"
-              description="Сол жақтағы форма арқылы алғашқы сыныпты жасаңыз."
+              title={t("Сынып әлі жасалмаған", "No classes yet")}
+              description={t("Сол жақтағы форма арқылы алғашқы сыныпты жасаңыз.", "Use the form to create your first class.")}
             />
           ) : (
             classes.data?.items.map((classroom) => (
@@ -168,24 +176,24 @@ export function TeacherClassesPage() {
                     <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                       <span className="inline-flex items-center gap-1">
                         <Users className="size-3.5" aria-hidden />
-                        {classroom.member_count} оқушы
+                        {classroom.member_count} {t("оқушы", "students")}
                       </span>
                       <span>·</span>
                       <span>
-                        Кіру коды:{" "}
+                        {t("Кіру коды", "Join code")}:{" "}
                         <span className="font-mono text-sm font-bold text-brand-700">
                           {classroom.join_code ?? "—"}
                         </span>
                       </span>
                       <span>·</span>
-                      <span>Құрылған: {formatDate(classroom.created_at)}</span>
+                      <span>{t("Құрылған", "Created")}: {formatDate(classroom.created_at)}</span>
                     </p>
                   </div>
-                  {assignmentStatusBadge(classroom.status)}
+                  <AssignmentStatusBadge status={classroom.status} />
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <LinkButton to={`/teacher/classes/${classroom.id}`} size="sm">
-                    Сыныпты ашу
+                    {t("Сыныпты ашу", "Open class")}
                   </LinkButton>
                   <LinkButton
                     to={`/teacher/results?class=${classroom.id}`}
@@ -193,7 +201,7 @@ export function TeacherClassesPage() {
                     size="sm"
                   >
                     <BarChart3 className="size-4" aria-hidden />
-                    Нәтижелер
+                    {t("Нәтижелер", "Results")}
                   </LinkButton>
                   <LinkButton
                     to={`/teacher/assignments?class=${classroom.id}`}
@@ -201,7 +209,7 @@ export function TeacherClassesPage() {
                     size="sm"
                   >
                     <CalendarClock className="size-4" aria-hidden />
-                    Тағайындау
+                    {t("Тағайындау", "Assign work")}
                   </LinkButton>
                 </div>
               </Card>
@@ -214,6 +222,8 @@ export function TeacherClassesPage() {
 }
 
 export function TeacherClassDetailPage() {
+  const { language } = usePreferences();
+  const t = useText();
   const { id = "" } = useParams();
   const queryClient = useQueryClient();
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
@@ -249,18 +259,18 @@ export function TeacherClassDetailPage() {
       queryClient.setQueryData(["class", id], (current: ClassroomDetail | undefined) =>
         current ? { ...current, join_code: updated.join_code } : current,
       );
-      setCopyMessage("Жаңа код берілді. Ескі код енді жұмыс істемейді.");
+      setCopyMessage(t("Жаңа код берілді. Ескі код енді жұмыс істемейді.", "A new code was generated. The old code no longer works."));
       void queryClient.invalidateQueries({ queryKey: ["classes"] });
     },
     onError: (mutationError) => setError(errorMessage(mutationError)),
   });
 
-  useTitle(classroom.data?.title ?? "Сынып");
+  useTitle(classroom.data?.title ?? t("Сынып", "Class"));
 
   if (classroom.isLoading) return <PageLoader />;
   if (classroom.isError)
     return (
-      <Alert tone="error" title="Сынып ашылмады">
+      <Alert tone="error" title={t("Сынып ашылмады", "Could not open class")}>
         {errorMessage(classroom.error)}
       </Alert>
     );
@@ -276,7 +286,7 @@ export function TeacherClassDetailPage() {
     if (!data?.join_code) return;
     try {
       await navigator.clipboard.writeText(data.join_code);
-      setCopyMessage("Код көшірілді.");
+      setCopyMessage(t("Код көшірілді.", "Code copied."));
     } catch {
       setCopyMessage(`Код: ${data.join_code} (қолмен көшіріңіз)`);
     }
@@ -288,11 +298,11 @@ export function TeacherClassDetailPage() {
         to="/teacher/classes"
         className="inline-flex items-center gap-1 text-sm font-semibold no-underline"
       >
-        <ArrowLeft className="size-4" aria-hidden /> Сыныптар
+        <ArrowLeft className="size-4" aria-hidden /> {t("Сыныптар", "Classes")}
       </Link>
       <div className="mt-3">
         <PageHeader
-          eyebrow="Сынып"
+          eyebrow={t("Сынып", "Class")}
           title={data.title}
           description={`Мұғалім: ${data.teacher_name ?? "—"} · Құрылған: ${formatDate(
             data.created_at,
@@ -323,18 +333,18 @@ export function TeacherClassDetailPage() {
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Оқушылар" value={data.member_count} />
-        <StatCard label="Тағайындаулар" value={assignments.data?.total ?? 0} tone="blue" />
-        <StatCard label="Тексеруді күтіп тұр" value={pendingReviews} tone="amber" />
+        <StatCard label={t("Оқушылар", "Students")} value={data.member_count} />
+        <StatCard label={t("Тағайындаулар", "Assignments")} value={assignments.data?.total ?? 0} tone="blue" />
+        <StatCard label={t("Тексеруді күтіп тұр", "Awaiting review")} value={pendingReviews} tone="amber" />
       </div>
 
       {results.data?.competency_averages.length ? (
         <Card className="mt-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-lg font-bold text-ink-950">STEM динамикасы (орташа)</h2>
+              <h2 className="text-lg font-bold text-ink-950">{t("STEM динамикасы (орташа)", "STEM progress (average)")}</h2>
               <p className="mt-1 text-xs text-slate-500">
-                Pre/post жұптары бар оқушылар бойынша орташа өзгеріс.
+                {t("Pre/post жұптары бар оқушылар бойынша орташа өзгеріс.", "Average change among students with paired pre/post results.")}
               </p>
             </div>
             <Button
@@ -350,7 +360,7 @@ export function TeacherClassDetailPage() {
               }}
             >
               <Download className="size-4" aria-hidden />
-              CSV жүктеу
+              {t("CSV жүктеу", "Download CSV")}
             </Button>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -378,19 +388,19 @@ export function TeacherClassDetailPage() {
       <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_20rem]">
         <div className="space-y-4">
           <Card>
-            <h2 className="text-lg font-bold text-ink-950">Оқушылар</h2>
+            <h2 className="text-lg font-bold text-ink-950">{t("Оқушылар", "Students")}</h2>
             {data.members.length === 0 ? (
               <p className="mt-2 text-sm text-slate-500">
-                Әзірге оқушы қосылмаған. Кіру кодын беріңіз.
+                {t("Әзірге оқушы қосылмаған. Кіру кодын беріңіз.", "No students have joined yet. Share the join code.")}
               </p>
             ) : (
               <div className="mt-3 overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 text-xs font-bold text-slate-600 uppercase">
                     <tr>
-                      <th className="px-3 py-2">Оқушы</th>
-                      <th className="px-3 py-2">Қосылған күні</th>
-                      <th className="px-3 py-2 text-right">Нәтиже</th>
+                      <th className="px-3 py-2">{t("Оқушы", "Student")}</th>
+                      <th className="px-3 py-2">{t("Қосылған күні", "Joined")}</th>
+                      <th className="px-3 py-2 text-right">{t("Нәтиже", "Result")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -405,7 +415,7 @@ export function TeacherClassDetailPage() {
                             to={`/teacher/results?class=${data.id}`}
                             className="text-xs font-semibold no-underline"
                           >
-                            Қарау
+                            {t("Қарау", "View")}
                           </Link>
                         </td>
                       </tr>
@@ -418,12 +428,12 @@ export function TeacherClassDetailPage() {
 
           <Card>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-lg font-bold text-ink-950">Тағайындаулар</h2>
+              <h2 className="text-lg font-bold text-ink-950">{t("Тағайындаулар", "Assignments")}</h2>
               <Link
                 to={`/teacher/assignments?class=${data.id}`}
                 className="text-xs font-semibold no-underline"
               >
-                Барлығын басқару
+                {t("Барлығын басқару", "Manage all")}
               </Link>
             </div>
             {assignments.isLoading ? (
@@ -435,11 +445,11 @@ export function TeacherClassDetailPage() {
             ) : (assignments.data?.items.length ?? 0) === 0 ? (
               <div className="mt-3">
                 <EmptyState
-                  title="Тағайындау жоқ"
-                  description="Сабақ, тапсырма, жоба немесе диагностика тағайындаңыз."
+                  title={t("Тағайындау жоқ", "No assignments")}
+                  description={t("Сабақ, тапсырма, жоба немесе диагностика тағайындаңыз.", "Assign a lesson, task, project, or assessment.")}
                   action={
                     <LinkButton to={`/teacher/assignments?class=${data.id}`}>
-                      Тағайындау жасау
+                      {t("Тағайындау жасау", "Create assignment")}
                     </LinkButton>
                   }
                 />
@@ -456,7 +466,7 @@ export function TeacherClassDetailPage() {
                         to={`/teacher/reviews/${assignment.id}`}
                         className="block truncate text-sm font-semibold text-ink-950 no-underline hover:text-brand-800"
                       >
-                        {assignment.content_title}
+                        {language === "en" ? assignment.content_title_en || assignment.content_title : assignment.content_title}
                       </Link>
                       <p className="mt-0.5 text-xs text-slate-500">
                         {assignment.content_type === "assessment" ? "Диагностика" : "Жұмыс"} ·
@@ -466,12 +476,12 @@ export function TeacherClassDetailPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {assignmentStatusBadge(assignment.status)}
+                      <AssignmentStatusBadge status={assignment.status} />
                       <Link
                         to={`/teacher/reviews/${assignment.id}`}
                         className="text-xs font-semibold no-underline"
                       >
-                        Тексеру
+                        {t("Тексеру", "Review")}
                       </Link>
                     </div>
                   </li>
@@ -483,14 +493,14 @@ export function TeacherClassDetailPage() {
 
         <aside className="space-y-4">
           <Card>
-            <h2 className="text-sm font-bold text-ink-950">Қосылу коды</h2>
+            <h2 className="text-sm font-bold text-ink-950">{t("Қосылу коды", "Join code")}</h2>
             <p className="mt-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-3 text-center font-mono text-2xl font-extrabold tracking-[0.25em] text-brand-900">
               {data.join_code ?? "—"}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button type="button" size="sm" variant="secondary" onClick={() => void copyCode()}>
                 <Copy className="size-4" aria-hidden />
-                Көшіру
+                {t("Көшіру", "Copy")}
               </Button>
               <Button
                 type="button"
@@ -508,7 +518,7 @@ export function TeacherClassDetailPage() {
                 }}
               >
                 <RefreshCw className="size-4" aria-hidden />
-                Жаңарту
+                {t("Жаңарту", "Regenerate")}
               </Button>
             </div>
             {copyMessage ? (
@@ -520,8 +530,8 @@ export function TeacherClassDetailPage() {
           </Card>
 
           <Card>
-            <h2 className="text-sm font-bold text-ink-950">Сынып мәртебесі</h2>
-            <div className="mt-2">{assignmentStatusBadge(data.status)}</div>
+            <h2 className="text-sm font-bold text-ink-950">{t("Сынып мәртебесі", "Class status")}</h2>
+            <div className="mt-2"><AssignmentStatusBadge status={data.status} /></div>
             <form
               className="mt-3 space-y-3"
               onSubmit={(event) => {
@@ -530,15 +540,15 @@ export function TeacherClassDetailPage() {
                 update.mutate({ status });
               }}
             >
-              <Field label="Мәртебені өзгерту" htmlFor="class-status">
+              <Field label={t("Мәртебені өзгерту", "Change status")} htmlFor="class-status">
                 <Select
                   id="class-status"
                   value={status}
                   onChange={(event) => setStatus(event.target.value)}
                 >
-                  <option value="">Таңдаңыз</option>
-                  <option value="active">Белсенді</option>
-                  <option value="archived">Мұрағаттау</option>
+                  <option value="">{t("Таңдаңыз", "Select")}</option>
+                  <option value="active">{t("Белсенді", "Active")}</option>
+                  <option value="archived">{t("Мұрағаттау", "Archive")}</option>
                 </Select>
               </Field>
               <Button
@@ -548,7 +558,7 @@ export function TeacherClassDetailPage() {
                 loading={update.isPending}
                 disabled={!status}
               >
-                Сақтау
+                {t("Сақтау", "Save")}
               </Button>
             </form>
             <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -564,24 +574,25 @@ export function TeacherClassDetailPage() {
 }
 
 function useContentOptions(type: string) {
+  const { language } = usePreferences();
   return useQuery({
-    queryKey: ["content-options", type],
+    queryKey: ["content-options", type, language],
     enabled: Boolean(type),
     queryFn: async () => {
       if (type === "assessment") {
         const data = await http.get<Page<AssessmentCard>>("/assessments?page_size=100");
-        return data.items.map((item) => ({ id: item.id, title: item.name }));
+        return data.items.map((item) => ({ id: item.id, title: localizeAssessment(item, language).name }));
       }
       if (type === "lesson") {
         const data = await http.get<Page<LessonCard>>("/lessons?page_size=100");
-        return data.items.map((item) => ({ id: item.id, title: item.title }));
+        return data.items.map((item) => ({ id: item.id, title: localizeLesson(item, language).title }));
       }
       if (type === "task") {
         const data = await http.get<Page<TaskCard>>("/tasks?page_size=100");
-        return data.items.map((item) => ({ id: item.id, title: item.title }));
+        return data.items.map((item) => ({ id: item.id, title: localizeTask(item, language).title }));
       }
       const data = await http.get<Page<ProjectCard>>("/projects?page_size=100");
-      return data.items.map((item) => ({ id: item.id, title: item.title }));
+      return data.items.map((item) => ({ id: item.id, title: localizeProject(item, language).title }));
     },
   });
 }
@@ -595,6 +606,7 @@ function AssignmentBuilder({
   defaultClassId?: string;
   onCreated: () => void;
 }) {
+  const t = useText();
   const [classroomId, setClassroomId] = useState(defaultClassId ?? "");
   const [contentType, setContentType] = useState<"lesson" | "task" | "project" | "assessment">(
     "lesson",
@@ -616,7 +628,7 @@ function AssignmentBuilder({
         notes: notes.trim() || null,
       }),
     onSuccess: (assignment) => {
-      setMessage(`«${assignment.content_title}» «${assignment.classroom_title}» сыныбына тағайындалды.`);
+      setMessage(t(`«${assignment.content_title}» «${assignment.classroom_title}» сыныбына тағайындалды.`, `“${assignment.content_title}” was assigned to ${assignment.classroom_title}.`));
       setError(null);
       setContentId("");
       onCreated();
@@ -629,37 +641,36 @@ function AssignmentBuilder({
 
   return (
     <Card>
-      <h2 className="text-lg font-bold text-ink-950">Жаңа тағайындау</h2>
+      <h2 className="text-lg font-bold text-ink-950">{t("Жаңа тағайындау", "New assignment")}</h2>
       <p className="mt-1 text-xs leading-5 text-slate-500">
-        Тек жарияланған материалдарды тағайындауға болады. Бір материалды бір сыныпқа қайта
-        тағайындау дубль жасамайды.
+        {t("Тек жарияланған материалдарды тағайындауға болады. Бір материалды бір сыныпқа қайта тағайындау дубль жасамайды.", "Only published material can be assigned. Assigning the same material to a class again does not create a duplicate.")}
       </p>
       <form
         className="mt-4 grid gap-3 sm:grid-cols-2"
         onSubmit={(event) => {
           event.preventDefault();
           if (!classroomId || !contentId) {
-            setError("Сынып пен материалды таңдаңыз.");
+            setError(t("Сынып пен материалды таңдаңыз.", "Select a class and material."));
             return;
           }
           create.mutate();
         }}
       >
-        <Field label="Сынып" htmlFor="builder-class" required>
+        <Field label={t("Сынып", "Class")} htmlFor="builder-class" required>
           <Select
             id="builder-class"
             value={classroomId}
             onChange={(event) => setClassroomId(event.target.value)}
           >
-            <option value="">Таңдаңыз</option>
+            <option value="">{t("Таңдаңыз", "Select")}</option>
             {classes.map((classroom) => (
               <option key={classroom.id} value={classroom.id}>
-                {classroom.title} ({classroom.member_count} оқушы)
+                {classroom.title} ({classroom.member_count} {t("оқушы", "students")})
               </option>
             ))}
           </Select>
         </Field>
-        <Field label="Материал түрі" htmlFor="builder-type" required>
+        <Field label={t("Материал түрі", "Material type")} htmlFor="builder-type" required>
           <Select
             id="builder-type"
             value={contentType}
@@ -670,17 +681,17 @@ function AssignmentBuilder({
               setContentId("");
             }}
           >
-            <option value="lesson">Сабақ</option>
-            <option value="task">Тапсырма</option>
-            <option value="project">Жоба</option>
-            <option value="assessment">Диагностика</option>
+            <option value="lesson">{t("Сабақ", "Lesson")}</option>
+            <option value="task">{t("Тапсырма", "Task")}</option>
+            <option value="project">{t("Жоба", "Project")}</option>
+            <option value="assessment">{t("Диагностика", "Assessment")}</option>
           </Select>
         </Field>
         <Field
-          label="Материал"
+          label={t("Материал", "Material")}
           htmlFor="builder-content"
           required
-          hint={options.isLoading ? "Жүктелуде..." : undefined}
+          hint={options.isLoading ? t("Жүктелуде...", "Loading...") : undefined}
         >
           <Select
             id="builder-content"
@@ -688,7 +699,7 @@ function AssignmentBuilder({
             onChange={(event) => setContentId(event.target.value)}
             disabled={options.isLoading || options.isError}
           >
-            <option value="">Таңдаңыз</option>
+            <option value="">{t("Таңдаңыз", "Select")}</option>
             {(options.data ?? []).map((option) => (
               <option key={option.id} value={option.id}>
                 {option.title}
@@ -696,7 +707,7 @@ function AssignmentBuilder({
             ))}
           </Select>
         </Field>
-        <Field label="Дедлайн (міндетті емес)" htmlFor="builder-due">
+        <Field label={t("Дедлайн (міндетті емес)", "Deadline (optional)")} htmlFor="builder-due">
           <TextInput
             id="builder-due"
             type="datetime-local"
@@ -705,14 +716,14 @@ function AssignmentBuilder({
           />
         </Field>
         <div className="sm:col-span-2">
-          <Field label="Ескертпе (міндетті емес)" htmlFor="builder-notes">
+          <Field label={t("Ескертпе (міндетті емес)", "Notes (optional)")} htmlFor="builder-notes">
             <TextArea
               id="builder-notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               className="min-h-20"
               maxLength={1000}
-              placeholder="Орындау шарттары, қосымша нұсқаулық..."
+              placeholder={t("Орындау шарттары, қосымша нұсқаулық...", "Requirements or additional instructions...")}
             />
           </Field>
         </div>
@@ -734,7 +745,7 @@ function AssignmentBuilder({
         <div className="sm:col-span-2">
           <Button type="submit" loading={create.isPending}>
             <Plus className="size-4" aria-hidden />
-            Тағайындау
+            {t("Тағайындау", "Assign")}
           </Button>
         </div>
       </form>
@@ -743,7 +754,9 @@ function AssignmentBuilder({
 }
 
 export function TeacherAssignmentsPage() {
-  useTitle("Тағайындаулар");
+  const t = useText();
+  const { language } = usePreferences();
+  useTitle(t("Тағайындаулар", "Assignments"));
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const classFilter = searchParams.get("class") ?? "";
@@ -801,7 +814,7 @@ export function TeacherAssignmentsPage() {
       if (statusFilter && assignment.status !== statusFilter) return false;
       if (!term) return true;
       return (
-        assignment.content_title.toLowerCase().includes(term) ||
+        assignment.content_title.toLowerCase().includes(term) || (assignment.content_title_en ?? "").toLowerCase().includes(term) ||
         assignment.classroom_title.toLowerCase().includes(term)
       );
     });
@@ -810,13 +823,13 @@ export function TeacherAssignmentsPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Тағайындаулар"
-        title="Сынып жұмыстары"
-        description="Сабақ, тапсырма, жоба және диагностиканы сыныпқа тағайындаңыз. Мұнда дедлайнды өзгертіп, тағайындауды жабуға болады."
+        eyebrow={t("Тағайындаулар", "Assignments")}
+        title={t("Сынып жұмыстары", "Class assignments")}
+        description={t("Сабақ, тапсырма, жоба және диагностиканы сыныпқа тағайындаңыз. Мұнда дедлайнды өзгертіп, тағайындауды жабуға болады.", "Assign lessons, tasks, projects, and assessments to a class. Change deadlines or close assignments here.")}
         actions={
           <LinkButton to="/teacher/reviews" variant="secondary">
             <ClipboardCheck className="size-4" aria-hidden />
-            Тексерулер
+            {t("Тексерулер", "Reviews")}
           </LinkButton>
         }
       />
@@ -839,41 +852,41 @@ export function TeacherAssignmentsPage() {
                 <TextInput
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Іздеу..."
+                  placeholder={t("Іздеу...", "Search...")}
                   className="pl-9"
-                  aria-label="Тағайындау іздеу"
+                  aria-label={t("Тағайындау іздеу", "Search assignments")}
                 />
               </div>
               <Select
                 value={typeFilter}
                 onChange={(event) => setTypeFilter(event.target.value)}
-                aria-label="Материал түрі"
+                aria-label={t("Материал түрі", "Material type")}
               >
-                <option value="">Барлық түрлер</option>
-                <option value="lesson">Сабақ</option>
-                <option value="task">Тапсырма</option>
-                <option value="project">Жоба</option>
-                <option value="assessment">Диагностика</option>
+                <option value="">{t("Барлық түрлер", "All types")}</option>
+                <option value="lesson">{t("Сабақ", "Lesson")}</option>
+                <option value="task">{t("Тапсырма", "Task")}</option>
+                <option value="project">{t("Жоба", "Project")}</option>
+                <option value="assessment">{t("Диагностика", "Assessment")}</option>
               </Select>
               <Select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                aria-label="Тағайындау мәртебесі"
+                aria-label={t("Тағайындау мәртебесі", "Assignment status")}
               >
-                <option value="">Барлық мәртебе</option>
-                <option value="active">Белсенді</option>
-                <option value="closed">Жабық</option>
+                <option value="">{t("Барлық мәртебе", "All statuses")}</option>
+                <option value="active">{t("Белсенді", "Active")}</option>
+                <option value="closed">{t("Жабық", "Closed")}</option>
               </Select>
             </div>
             {classFilter ? (
               <p className="mt-3 text-xs text-slate-500">
-                Сынып бойынша сүзілген:{" "}
+                {t("Сынып бойынша сүзілген", "Filtered by class")}:{" "}
                 <strong>
                   {classes.data?.items.find((item) => item.id === classFilter)?.title ?? classFilter}
                 </strong>
                 .{" "}
                 <Link to="/teacher/assignments" className="font-semibold no-underline">
-                  Сүзгіні тазалау
+                  {t("Сүзгіні тазалау", "Clear filter")}
                 </Link>
               </p>
             ) : null}
@@ -885,34 +898,34 @@ export function TeacherAssignmentsPage() {
             <Alert tone="error">{errorMessage(assignments.error)}</Alert>
           ) : filtered.length === 0 ? (
             <EmptyState
-              title="Тағайындау табылмады"
-              description="Сүзгілерді өзгертіңіз немесе жаңа тағайындау жасаңыз."
+              title={t("Тағайындау табылмады", "No assignments found")}
+              description={t("Сүзгілерді өзгертіңіз немесе жаңа тағайындау жасаңыз.", "Change the filters or create an assignment.")}
             />
           ) : (
             filtered.map((assignment) => (
               <Card key={assignment.id}>
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-ink-950">{assignment.content_title}</p>
+                    <p className="text-sm font-bold text-ink-950">{language === "en" ? assignment.content_title_en || assignment.content_title : assignment.content_title}</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      {assignment.classroom_title} · Дедлайн: {formatDateTime(assignment.due_at)} ·{" "}
-                      {assignment.submitted_count}/{assignment.total_students} тапсырылды ·{" "}
-                      {assignment.reviewed_count} тексерілді
+                      {assignment.classroom_title} · {t("Дедлайн", "Deadline")}: {formatDateTime(assignment.due_at)} ·{" "}
+                      {assignment.submitted_count}/{assignment.total_students} {t("тапсырылды", "submitted")} ·{" "}
+                      {assignment.reviewed_count} {t("тексерілді", "reviewed")}
                     </p>
                     {assignment.notes ? (
                       <p className="mt-1 text-xs text-slate-600">{assignment.notes}</p>
                     ) : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {assignmentStatusBadge(assignment.status)}
+                    <AssignmentStatusBadge status={assignment.status} />
                     <Badge tone="slate">
                       {assignment.content_type === "assessment"
-                        ? "Диагностика"
+                        ? t("Диагностика", "Assessment")
                         : assignment.content_type === "lesson"
-                          ? "Сабақ"
+                          ? t("Сабақ", "Lesson")
                           : assignment.content_type === "task"
-                            ? "Тапсырма"
-                            : "Жоба"}
+                            ? t("Тапсырма", "Task")
+                            : t("Жоба", "Project")}
                     </Badge>
                   </div>
                 </div>
@@ -922,14 +935,14 @@ export function TeacherAssignmentsPage() {
                       to={contentPath("teacher", assignment.content_type, assignment.content_id)}
                       className="text-xs font-semibold no-underline"
                     >
-                      Материалды ашу
+                      {t("Материалды ашу", "Open material")}
                     </Link>
                   ) : null}
                   <Link
                     to={`/teacher/reviews/${assignment.id}`}
                     className="text-xs font-semibold no-underline"
                   >
-                    Жұмыстарды тексеру
+                    {t("Жұмыстарды тексеру", "Review submissions")}
                   </Link>
                   <Button
                     type="button"
@@ -946,7 +959,7 @@ export function TeacherAssignmentsPage() {
                     }}
                   >
                     <FileText className="size-3.5" aria-hidden />
-                    Өңдеу
+                    {t("Өңдеу", "Edit")}
                   </Button>
                   <Button
                     type="button"
@@ -962,7 +975,7 @@ export function TeacherAssignmentsPage() {
                       })
                     }
                   >
-                    {assignment.status === "active" ? "Жабу" : "Қайта ашу"}
+                    {assignment.status === "active" ? t("Жабу", "Close") : t("Қайта ашу", "Reopen")}
                   </Button>
                 </div>
                 {editId === assignment.id ? (
@@ -973,7 +986,7 @@ export function TeacherAssignmentsPage() {
                       updateDetails.mutate(assignment.id);
                     }}
                   >
-                    <Field label="Дедлайн" htmlFor={`due-${assignment.id}`}>
+                    <Field label={t("Дедлайн", "Deadline")} htmlFor={`due-${assignment.id}`}>
                       <TextInput
                         id={`due-${assignment.id}`}
                         type="datetime-local"
@@ -981,7 +994,7 @@ export function TeacherAssignmentsPage() {
                         onChange={(event) => setEditDue(event.target.value)}
                       />
                     </Field>
-                    <Field label="Ескертпе" htmlFor={`notes-${assignment.id}`}>
+                    <Field label={t("Ескертпе", "Notes")} htmlFor={`notes-${assignment.id}`}>
                       <TextArea
                         id={`notes-${assignment.id}`}
                         value={editNotes}
@@ -996,7 +1009,7 @@ export function TeacherAssignmentsPage() {
                         size="sm"
                         loading={updateDetails.isPending}
                       >
-                        Сақтау
+                        {t("Сақтау", "Save")}
                       </Button>
                       <Button
                         type="button"
@@ -1004,7 +1017,7 @@ export function TeacherAssignmentsPage() {
                         variant="ghost"
                         onClick={() => setEditId(null)}
                       >
-                        Болдырмау
+                        {t("Болдырмау", "Cancel")}
                       </Button>
                     </div>
                   </form>
@@ -1025,12 +1038,12 @@ export function TeacherAssignmentsPage() {
             />
           )}
           <Card className="bg-slate-50">
-            <h2 className="text-sm font-bold text-ink-950">Тағайындау ережелері</h2>
+            <h2 className="text-sm font-bold text-ink-950">{t("Тағайындау ережелері", "Assignment rules")}</h2>
             <ul className="mt-2 list-disc space-y-1.5 pl-5 text-xs leading-5 text-slate-600">
-              <li>Тек жарияланған материалдар қолжетімді.</li>
-              <li>Жабылған тағайындауға оқушы жаңа жауап жібере алмайды.</li>
-              <li>Дедлайн өткенімен, мұғалім қайта аша алады.</li>
-              <li>Бір материал бір сыныпқа бір рет тағайындалады.</li>
+              <li>{t("Тек жарияланған материалдар қолжетімді.", "Only published materials are available.")}</li>
+              <li>{t("Жабылған тағайындауға оқушы жаңа жауап жібере алмайды.", "Students cannot submit new work to a closed assignment.")}</li>
+              <li>{t("Дедлайн өткенімен, мұғалім қайта аша алады.", "A teacher can reopen an assignment after its deadline.")}</li>
+              <li>{t("Бір материал бір сыныпқа бір рет тағайындалады.", "Each material can be assigned once per class.")}</li>
             </ul>
           </Card>
           <DemoNotice />
@@ -1041,7 +1054,9 @@ export function TeacherAssignmentsPage() {
 }
 
 export function TeacherReviewsPage() {
-  useTitle("Тексерулер");
+  const t = useText();
+  const { language } = usePreferences();
+  useTitle(t("Тексерулер", "Reviews"));
   const [search, setSearch] = useState("");
   const assignments = useQuery({
     queryKey: ["assignments", "teacher", "reviews"],
@@ -1053,7 +1068,7 @@ export function TeacherReviewsPage() {
       if (assignment.content_type === "lesson") return false;
       if (!term) return true;
       return (
-        assignment.content_title.toLowerCase().includes(term) ||
+        assignment.content_title.toLowerCase().includes(term) || (assignment.content_title_en ?? "").toLowerCase().includes(term) ||
         assignment.classroom_title.toLowerCase().includes(term)
       );
     });
@@ -1066,21 +1081,21 @@ export function TeacherReviewsPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Тексерулер"
-        title="Оқушы жұмыстарын тексеру"
-        description="Жабық тесттер серверде автоматты тексеріледі; ашық жұмыстар мен жобаларды мұғалім рубрика бойынша бағалайды."
+        eyebrow={t("Тексерулер", "Reviews")}
+        title={t("Оқушы жұмыстарын тексеру", "Review student work")}
+        description={t("Жабық тесттер серверде автоматты тексеріледі; ашық жұмыстар мен жобаларды мұғалім рубрика бойынша бағалайды.", "Closed questions are graded automatically; teachers assess open work and projects using rubrics.")}
         actions={
           <LinkButton to="/teacher/assignments" variant="secondary">
             <CalendarClock className="size-4" aria-hidden />
-            Тағайындаулар
+            {t("Тағайындаулар", "Assignments")}
           </LinkButton>
         }
       />
       <div className="mb-4 grid gap-4 sm:grid-cols-3">
-        <StatCard label="Тағайындаулар" value={rows.length} />
-        <StatCard label="Тексеруді күтіп тұр" value={pending} tone="amber" />
+        <StatCard label={t("Тағайындаулар", "Assignments")} value={rows.length} />
+        <StatCard label={t("Тексеруді күтіп тұр", "Awaiting review")} value={pending} tone="amber" />
         <StatCard
-          label="Тексерілген жұмыстар"
+          label={t("Тексерілген жұмыстар", "Reviewed work")}
           value={rows.reduce((sum, item) => sum + item.reviewed_count, 0)}
           tone="blue"
         />
@@ -1094,9 +1109,9 @@ export function TeacherReviewsPage() {
           <TextInput
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Материал немесе сынып бойынша іздеу..."
+            placeholder={t("Материал немесе сынып бойынша іздеу...", "Search by material or class...")}
             className="pl-9"
-            aria-label="Тексеру іздеу"
+            aria-label={t("Тексеру іздеу", "Search reviews")}
           />
         </div>
       </div>
@@ -1106,9 +1121,9 @@ export function TeacherReviewsPage() {
         <Alert tone="error">{errorMessage(assignments.error)}</Alert>
       ) : (assignments.data?.items.length ?? 0) === 0 ? (
         <EmptyState
-          title="Тексеруге жұмыс жоқ"
-          description="Алдымен сыныпқа тапсырма немесе жоба тағайындаңыз."
-          action={<LinkButton to="/teacher/assignments">Тағайындау жасау</LinkButton>}
+          title={t("Тексеруге жұмыс жоқ", "No work to review")}
+          description={t("Алдымен сыныпқа тапсырма немесе жоба тағайындаңыз.", "First assign a task or project to a class.")}
+          action={<LinkButton to="/teacher/assignments">{t("Тағайындау жасау", "Create assignment")}</LinkButton>}
         />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -1116,11 +1131,11 @@ export function TeacherReviewsPage() {
             <table className="w-full min-w-[48rem] text-left text-sm">
               <thead className="bg-slate-50 text-xs font-bold text-slate-600 uppercase">
                 <tr>
-                  <th className="px-4 py-2.5">Материал</th>
-                  <th className="px-4 py-2.5">Сынып</th>
-                  <th className="px-4 py-2.5 text-right">Тапсырылды</th>
-                  <th className="px-4 py-2.5 text-right">Тексерілді</th>
-                  <th className="px-4 py-2.5 text-right">Күтіп тұр</th>
+                  <th className="px-4 py-2.5">{t("Материал", "Material")}</th>
+                  <th className="px-4 py-2.5">{t("Сынып", "Class")}</th>
+                  <th className="px-4 py-2.5 text-right">{t("Тапсырылды", "Submitted")}</th>
+                  <th className="px-4 py-2.5 text-right">{t("Тексерілді", "Reviewed")}</th>
+                  <th className="px-4 py-2.5 text-right">{t("Күтіп тұр", "Pending")}</th>
                   <th className="px-4 py-2.5"></th>
                 </tr>
               </thead>
@@ -1133,9 +1148,9 @@ export function TeacherReviewsPage() {
                   return (
                     <tr key={assignment.id} className="border-t border-slate-100">
                       <td className="px-4 py-3">
-                        <p className="font-semibold text-ink-950">{assignment.content_title}</p>
+                        <p className="font-semibold text-ink-950">{language === "en" ? assignment.content_title_en || assignment.content_title : assignment.content_title}</p>
                         <p className="text-xs text-slate-500">
-                          Дедлайн: {formatDateTime(assignment.due_at)}
+                          {t("Дедлайн", "Deadline")}: {formatDateTime(assignment.due_at)}
                         </p>
                       </td>
                       <td className="px-4 py-3 text-slate-600">{assignment.classroom_title}</td>
@@ -1155,7 +1170,7 @@ export function TeacherReviewsPage() {
                           to={`/teacher/reviews/${assignment.id}`}
                           className="text-xs font-semibold no-underline"
                         >
-                          Ашу
+                          {t("Ашу", "Open")}
                         </Link>
                       </td>
                     </tr>
@@ -1174,6 +1189,8 @@ export function TeacherReviewsPage() {
 }
 
 export function TeacherReviewDetailPage() {
+  const t = useText();
+  const { language } = usePreferences();
   const { id = "" } = useParams();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1188,7 +1205,7 @@ export function TeacherReviewDetailPage() {
   });
   const task = useQuery({
     queryKey: ["review-task", assignment.data?.content_id],
-    queryFn: () => http.get<{ rubric_json: { criterion: string; points: number }[] }>(
+    queryFn: () => http.get<TaskDetail>(
       `/tasks/${assignment.data?.content_id}`,
     ),
     enabled: Boolean(assignment.data && assignment.data.content_type === "task"),
@@ -1196,7 +1213,7 @@ export function TeacherReviewDetailPage() {
   const project = useQuery({
     queryKey: ["review-project", assignment.data?.content_id],
     queryFn: () =>
-      http.get<{ rubric_json: { criterion: string; points: number }[] }>(
+      http.get<ProjectDetail>(
         `/projects/${assignment.data?.content_id}`,
       ),
     enabled: Boolean(assignment.data && assignment.data.content_type === "project"),
@@ -1222,18 +1239,18 @@ export function TeacherReviewDetailPage() {
     onError: (mutationError) => setError(errorMessage(mutationError)),
   });
 
-  useTitle(assignment.data?.content_title ?? "Тексеру");
+  useTitle(assignment.data ? (language === "en" ? assignment.data.content_title_en || assignment.data.content_title : assignment.data.content_title) : t("Тексеру", "Review"));
 
   if (assignment.isLoading) return <PageLoader />;
   if (assignment.isError)
     return (
-      <Alert tone="error" title="Тағайындау ашылмады">
+      <Alert tone="error" title={t("Тағайындау ашылмады", "Could not open assignment")}>
         {errorMessage(assignment.error)}
       </Alert>
     );
   const data = assignment.data;
   if (!data) return null;
-  const rubric = task.data?.rubric_json ?? project.data?.rubric_json ?? [];
+  const rubric = task.data ? localizeTask(task.data, language).rubric_json : project.data ? localizeProject(project.data, language).rubric_json : [];
   const maxScore = selected?.max_score ?? data.max_score ?? 100;
   const closedAnswers = selected?.answers_json?.selected_option_ids ?? [];
 
@@ -1243,11 +1260,11 @@ export function TeacherReviewDetailPage() {
         to="/teacher/reviews"
         className="inline-flex items-center gap-1 text-sm font-semibold no-underline"
       >
-        <ArrowLeft className="size-4" aria-hidden /> Тексерулер
+        <ArrowLeft className="size-4" aria-hidden /> {t("Тексерулер", "Reviews")}
       </Link>
       <PageHeader
         eyebrow={`${data.classroom_title} · ${formatDateTime(data.due_at)}`}
-        title={data.content_title}
+        title={language === "en" ? data.content_title_en || data.content_title : data.content_title}
         description={`Барлығы ${submissions.data?.total_students ?? data.total_students} оқушы · тапсырылды ${
           submissions.data?.submitted_count ?? data.submitted_count
         } · тексерілді ${submissions.data?.reviewed_count ?? data.reviewed_count}`}
@@ -1259,19 +1276,32 @@ export function TeacherReviewDetailPage() {
         </div>
       ) : null}
 
+      {submissions.data?.students.length ? (
+        <Card className="mb-6">
+          <h2 className="text-sm font-bold text-ink-950">{t("Сынып оқушыларының мәртебесі", "Student status in this class")}</h2>
+          <ul className="mt-3 divide-y divide-slate-200">
+            {submissions.data.students.map((student) => (
+              <li key={student.student_id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span>{student.display_name}</span><AssignmentStatusBadge status={student.status} />
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
       {submissions.isLoading ? (
         <PageLoader />
       ) : submissions.isError ? (
         <Alert tone="error">{errorMessage(submissions.error)}</Alert>
       ) : (submissions.data?.items.length ?? 0) === 0 ? (
         <EmptyState
-          title="Әзірге тапсырылған жұмыс жоқ"
-          description="Оқушылар жұмысты жібергенде ол осы жерде пайда болады."
+          title={t("Әзірге тапсырылған жұмыс жоқ", "No submissions yet")}
+          description={t("Оқушылар жұмысты жібергенде ол осы жерде пайда болады.", "Student submissions will appear here.")}
         />
       ) : (
         <div className="grid gap-6 xl:grid-cols-[22rem_1fr]">
           <Card className="self-start">
-            <h2 className="text-sm font-bold text-ink-950">Оқушы жұмыстары</h2>
+            <h2 className="text-sm font-bold text-ink-950">{t("Оқушы жұмыстары", "Student submissions")}</h2>
             <ul className="mt-3 space-y-1.5">
               {submissions.data?.items.map((item) => (
                 <li key={item.id}>
@@ -1286,17 +1316,17 @@ export function TeacherReviewDetailPage() {
                   >
                     <span className="flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-ink-950">
-                        {item.student_name ?? "Оқушы"}
+                        {item.student_name ?? t("Оқушы", "Student")}
                       </span>
-                      {assignmentStatusBadge(item.status)}
+                      <AssignmentStatusBadge status={item.status} />
                     </span>
                     <span className="mt-0.5 block text-xs text-slate-500">
-                      {formatDateTime(item.submitted_at)} · баға: {item.grade ?? "—"}/
+                      {formatDateTime(item.submitted_at)} · {t("баға", "grade")}: {item.grade ?? "—"}/
                       {item.max_score ?? data.max_score ?? "—"}
                     </span>
                     {item.auto_checked ? (
                       <span className="mt-1 inline-flex text-[10px] font-bold text-brand-700 uppercase">
-                        Автоматты тексерілген
+                        {t("Автоматты тексерілген", "Automatically graded")}
                       </span>
                     ) : null}
                   </button>
@@ -1312,20 +1342,20 @@ export function TeacherReviewDetailPage() {
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <h2 className="text-lg font-bold text-ink-950">
-                        {selected.student_name ?? "Оқушының жауабы"}
+                        {selected.student_name ?? t("Оқушының жауабы", "Student response")}
                       </h2>
                       <p className="mt-1 text-xs text-slate-500">
-                        Тапсырылған: {formatDateTime(selected.submitted_at)} · Талпыныс:{" "}
+                        {t("Тапсырылған", "Submitted")}: {formatDateTime(selected.submitted_at)} · {t("Талпыныс", "Attempt")}:{" "}
                         {selected.attempts_count}
                       </p>
                     </div>
-                    {assignmentStatusBadge(selected.status)}
+                    <AssignmentStatusBadge status={selected.status} />
                   </div>
 
                   {selected.text ? (
                     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
                       <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
-                        Мәтіндік жауап
+                        {t("Мәтіндік жауап", "Text response")}
                       </p>
                       <div className="mt-2 text-sm leading-6 text-slate-700">
                         <RichTextRenderer html={selected.text} />
@@ -1335,7 +1365,7 @@ export function TeacherReviewDetailPage() {
 
                   {selected.link ? (
                     <p className="mt-3 text-sm">
-                      Сілтеме:{" "}
+                      {t("Сілтеме", "Link")}:{" "}
                       <a
                         href={selected.link}
                         target="_blank"
@@ -1350,7 +1380,7 @@ export function TeacherReviewDetailPage() {
                   {selected.files.length > 0 ? (
                     <div className="mt-4">
                       <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
-                        Файлдар
+                        {t("Файлдар", "Files")}
                       </p>
                       <ul className="mt-2 space-y-1.5">
                         {selected.files.map((file) => (
@@ -1370,7 +1400,7 @@ export function TeacherReviewDetailPage() {
                               }}
                             >
                               <Download className="size-3.5" aria-hidden />
-                              Жүктеу
+                              {t("Жүктеу", "Download")}
                             </button>
                           </li>
                         ))}
@@ -1381,16 +1411,14 @@ export function TeacherReviewDetailPage() {
                   {closedAnswers.length > 0 ? (
                     <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3.5">
                       <p className="text-xs font-bold tracking-wide text-brand-800 uppercase">
-                        Таңдалған жауаптар
+                        {t("Таңдалған жауаптар", "Selected answers")}
                       </p>
                       <p className="mt-1 text-sm text-brand-950">
-                        {selected.correct_labels?.length
-                          ? selected.correct_labels.join(", ")
-                          : closedAnswers.join(", ")}
+                        {answerLabels(closedAnswers, task.data ? localizeTask(task.data, language).options : []).join(", ")}
                       </p>
                       {selected.correct_labels?.length ? (
                         <p className="mt-1 text-xs text-brand-700">
-                          Жауап кілтімен салыстырылды. Баға автоматты қойылды.
+                          {t("Дұрыс жауап", "Correct answer")}: {answerLabels(selected.correct_option_ids ?? [], task.data ? localizeTask(task.data, language).options : []).join(", ") || selected.correct_labels.join(", ")}
                         </p>
                       ) : null}
                     </div>
@@ -1399,7 +1427,7 @@ export function TeacherReviewDetailPage() {
                   {selected.feedback ? (
                     <div className="mt-4">
                       <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
-                        Соңғы пікір
+                        {t("Соңғы пікір", "Latest feedback")}
                       </p>
                       <p className="mt-1 text-sm text-slate-700">{selected.feedback}</p>
                     </div>
@@ -1408,12 +1436,12 @@ export function TeacherReviewDetailPage() {
 
                 <Card>
                   <h2 className="text-lg font-bold text-ink-950">
-                    {selected.auto_checked ? "Бағаны растау / өзгерту" : "Бағалау"}
+                    {selected.auto_checked ? t("Бағаны растау / өзгерту", "Confirm or change grade") : t("Бағалау", "Grade")}
                   </h2>
                   <p className="mt-1 text-xs leading-5 text-slate-500">
                     {selected.auto_checked
-                      ? "Жабық тапсырма автоматты тексерілді. Қажет болса бағаны мұғалім ретінде өзгерте аласыз."
-                      : "Рубрика критерийлерін белгілеңіз немесе бағаны қолмен қойыңыз."}
+                      ? t("Жабық тапсырма автоматты тексерілді. Қажет болса бағаны мұғалім ретінде өзгерте аласыз.", "This task was graded automatically. You can change the grade if needed.")
+                      : t("Рубрика критерийлерін белгілеңіз немесе бағаны қолмен қойыңыз.", "Select rubric criteria or enter a grade manually.")}
                   </p>
                   <div className="mt-4">
                     <GradeRubric
@@ -1442,7 +1470,9 @@ export function TeacherReviewDetailPage() {
 }
 
 export function TeacherDiagnosticsPage() {
-  useTitle("Диагностика");
+  const t = useText();
+  const { language } = usePreferences();
+  useTitle(t("Диагностика", "Assessments"));
   const [kind, setKind] = useState("");
   const assessments = useQuery({
     queryKey: ["teacher-assessments", kind],
@@ -1459,13 +1489,13 @@ export function TeacherDiagnosticsPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Диагностика"
-        title="Pre-test және post-test"
-        description="Мұғалім диагностиканы сыныпқа тағайындайды. Нәтижелер оқушының «Нәтижелер» бетінде және сынып есебінде агрегатталады."
+        eyebrow={t("Диагностика", "Assessments")}
+        title={t("Pre-test және post-test", "Pre-test and post-test")}
+        description={t("Мұғалім диагностиканы сыныпқа тағайындайды. Нәтижелер оқушының «Нәтижелер» бетінде және сынып есебінде агрегатталады.", "Assign assessments to a class. Results appear in student results and class reports.")}
         actions={
           <LinkButton to="/teacher/results" variant="secondary">
             <BarChart3 className="size-4" aria-hidden />
-            Сынып нәтижелері
+            {t("Сынып нәтижелері", "Class results")}
           </LinkButton>
         }
       />
@@ -1473,12 +1503,12 @@ export function TeacherDiagnosticsPage() {
         <Select
           value={kind}
           onChange={(event) => setKind(event.target.value)}
-          aria-label="Диагностика түрі"
+          aria-label={t("Диагностика түрі", "Assessment type")}
         >
-          <option value="">Барлық диагностика</option>
+          <option value="">{t("Барлық диагностика", "All assessments")}</option>
           <option value="pre">Pre-test</option>
           <option value="post">Post-test</option>
-          <option value="quiz">Тест</option>
+          <option value="quiz">{t("Тест", "Quiz")}</option>
         </Select>
       </div>
       {assessments.isLoading ? (
@@ -1487,8 +1517,8 @@ export function TeacherDiagnosticsPage() {
         <Alert tone="error">{errorMessage(assessments.error)}</Alert>
       ) : (assessments.data?.items.length ?? 0) === 0 ? (
         <EmptyState
-          title="Диагностика табылмады"
-          description="Әкімші CMS-те диагностика жасап, жариялауы керек."
+          title={t("Диагностика табылмады", "No assessments found")}
+          description={t("Әкімші CMS-те диагностика жасап, жариялауы керек.", "An administrator must create and publish an assessment.")}
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -1496,39 +1526,38 @@ export function TeacherDiagnosticsPage() {
             <Card key={assessment.id}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <h2 className="text-base font-bold text-ink-950">{assessment.name}</h2>
+                  <h2 className="text-base font-bold text-ink-950">{localizeAssessment(assessment, language).name}</h2>
                   <p className="mt-1 text-xs text-slate-500">
                     {assessmentKindLabels[assessment.kind] ?? assessment.kind} ·{" "}
-                    {assessment.question_count} сұрақ · {assessment.max_score} балл · v
+                    {assessment.question_count} {t("сұрақ", "questions")} · {assessment.max_score} {t("балл", "points")} · v
                     {assessment.version}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  {assessment.is_demo ? <Badge tone="amber">Демо</Badge> : null}
-                  <Badge tone="slate">Әдістеме: {assessment.methodology_key}</Badge>
+                  {assessment.is_demo ? <Badge tone="amber">{t("Демо", "Demo")}</Badge> : null}
+                  <Badge tone="slate">{t("Әдістеме", "Methodology")}: {assessment.methodology_key}</Badge>
                 </div>
               </div>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{assessment.description}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{localizeAssessment(assessment, language).description}</p>
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                 <span className="inline-flex items-center gap-1">
                   <GraduationCap className="size-3.5" aria-hidden />
-                  Талпыныс лимиті: {assessment.attempts_limit}
+                  {t("Талпыныс лимиті", "Attempt limit")}: {assessment.attempts_limit}
                 </span>
-                <span>·</span>
-                <span>Қолданылған: {assessment.attempts_used}</span>
+
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <AssignToClass
                   contentType="assessment"
                   contentId={assessment.id}
-                  label="Сыныпқа тағайындау"
+                  label={t("Сыныпқа тағайындау", "Assign to class")}
                 />
                 <LinkButton
                   to={`/teacher/results?assessment=${assessment.id}`}
                   variant="secondary"
                   size="sm"
                 >
-                  Нәтижелер
+                  {t("Нәтижелер", "Results")}
                 </LinkButton>
               </div>
             </Card>
@@ -1544,7 +1573,7 @@ export function TeacherDiagnosticsPage() {
           >
             <span>
               <span className="block text-sm font-semibold text-ink-950">{classroom.title}</span>
-              <span className="text-xs text-slate-500">{classroom.member_count} оқушы</span>
+              <span className="text-xs text-slate-500">{classroom.member_count} {t("оқушы", "students")}</span>
             </span>
             <BarChart3 className="size-4 text-brand-700" aria-hidden />
           </Link>
@@ -1552,8 +1581,7 @@ export function TeacherDiagnosticsPage() {
       </div>
       <div className="mt-6">
         <DemoNotice>
-          Порогтық деңгейлер мен scoring конфигурациясы демо-үлгіде. Pre/post салыстыруы бір
-          әдістеме кілті шегінде ғана жүргізіледі.
+          {t("Порогтық деңгейлер мен scoring конфигурациясы демо-үлгіде. Pre/post салыстыруы бір әдістеме кілті шегінде ғана жүргізіледі.", "Thresholds and scoring settings are demo values. Pre/post comparisons use the same methodology key.")}
         </DemoNotice>
       </div>
     </div>
@@ -1561,7 +1589,9 @@ export function TeacherDiagnosticsPage() {
 }
 
 export function TeacherResultsPage() {
-  useTitle("Нәтижелер");
+  const { language } = usePreferences();
+  const t = useText();
+  useTitle(t("Нәтижелер", "Results"));
   const [searchParams, setSearchParams] = useSearchParams();
   const classParam = searchParams.get("class") ?? "";
   const [error, setError] = useState<string | null>(null);
@@ -1576,12 +1606,14 @@ export function TeacherResultsPage() {
     enabled: Boolean(classId),
   });
 
+  const pairedAverage = pairedClassAverages(results.data?.students ?? []);
+
   return (
     <div>
       <PageHeader
-        eyebrow="Нәтижелер"
-        title="Сынып нәтижелері және CSV"
-        description="Оқушы прогресі, орташа бағалар және STEM құзыреттіліктері бойынша pre/post өзгерісі. CSV Excel үшін UTF-8 BOM форматында беріледі."
+        eyebrow={t("Нәтижелер", "Results")}
+        title={t("Сынып нәтижелері және CSV", "Class results and CSV")}
+        description={t("Оқушы прогресі, орташа бағалар және STEM құзыреттіліктері бойынша pre/post өзгерісі. CSV Excel үшін UTF-8 BOM форматында беріледі.", "Student progress, average grades, and pre/post changes in STEM competencies. CSV uses UTF-8 BOM for Excel.")}
         actions={
           results.data ? (
             <Button
@@ -1596,7 +1628,7 @@ export function TeacherResultsPage() {
               }}
             >
               <Download className="size-4" aria-hidden />
-              CSV жүктеу
+              {t("CSV жүктеу", "Download CSV")}
             </Button>
           ) : undefined
         }
@@ -1608,14 +1640,14 @@ export function TeacherResultsPage() {
         <Alert tone="error">{errorMessage(classes.error)}</Alert>
       ) : (classes.data?.items.length ?? 0) === 0 ? (
         <EmptyState
-          title="Сынып жоқ"
-          description="Нәтижені көру үшін алдымен сынып жасаңыз."
-          action={<LinkButton to="/teacher/classes">Сынып жасау</LinkButton>}
+          title={t("Сынып жоқ", "No classes")}
+          description={t("Нәтижені көру үшін алдымен сынып жасаңыз.", "Create a class to see its results.")}
+          action={<LinkButton to="/teacher/classes">{t("Сынып жасау", "Create class")}</LinkButton>}
         />
       ) : (
         <>
           <div className="mb-5 max-w-md">
-            <Field label="Сынып" htmlFor="results-class">
+            <Field label={t("Сынып", "Class")} htmlFor="results-class">
               <Select
                 id="results-class"
                 value={classId}
@@ -1627,7 +1659,7 @@ export function TeacherResultsPage() {
               >
                 {classes.data?.items.map((classroom) => (
                   <option key={classroom.id} value={classroom.id}>
-                    {classroom.title} ({classroom.member_count} оқушы)
+                    {classroom.title} ({classroom.member_count} {t("оқушы", "students")})
                   </option>
                 ))}
               </Select>
@@ -1647,19 +1679,15 @@ export function TeacherResultsPage() {
           ) : !results.data ? null : (
             <div className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-3">
-                <StatCard label="Оқушылар" value={results.data.students_total} />
+                <StatCard label={t("Оқушылар", "Students")} value={results.data.students_total} />
                 <StatCard
-                  label="Pre-test бар"
-                  value={
-                    results.data.students.filter((student) => student.pre_overall !== null).length
-                  }
+                  label={t("Pre-test бар", "Pre-test completed")}
+                  value={`${results.data.students.filter((student) => student.pre_overall !== null).length}/${results.data.students_total} (${formatPercent(results.data.students_total ? results.data.students.filter((student) => student.pre_overall !== null).length * 100 / results.data.students_total : 0)})`}
                   tone="blue"
                 />
                 <StatCard
-                  label="Post-test бар"
-                  value={
-                    results.data.students.filter((student) => student.post_overall !== null).length
-                  }
+                  label={t("Post-test бар", "Post-test completed")}
+                  value={`${results.data.students.filter((student) => student.post_overall !== null).length}/${results.data.students_total} (${formatPercent(results.data.students_total ? results.data.students.filter((student) => student.post_overall !== null).length * 100 / results.data.students_total : 0)})`}
                   tone="amber"
                 />
               </div>
@@ -1669,10 +1697,9 @@ export function TeacherResultsPage() {
                   student.pre_overall !== null && student.post_overall !== null,
               ) ? (
                 <Card>
-                  <h2 className="text-lg font-bold text-ink-950">Жалпы өзгеріс</h2>
+                  <h2 className="text-lg font-bold text-ink-950">{t("Жалпы өзгеріс", "Overall change")}</h2>
                   <p className="mt-1 text-xs text-slate-500">
-                    Тек екі талпынысы да бар оқушылар кіреді. Бұл көрсеткіш себептік әсерді
-                    дәлелдемейді.
+                    {t("Тек екі талпынысы да бар оқушылар кіреді. Бұл көрсеткіш себептік әсерді дәлелдемейді.", "Only students with both attempts are included. This does not establish a causal effect.")}
                   </p>
                   <div className="mt-4">
                     <DiagnosticsChart
@@ -1682,19 +1709,20 @@ export function TeacherResultsPage() {
                         post_assessment: "Post-test орташа",
                         pre_date: "",
                         post_date: "",
-                        overall_delta_pp: 0,
+                        overall_delta_pp: pairedAverage.delta,
                         demo_notice: results.data.demo_notice,
                         rows: results.data.competency_averages.filter((row) => row.delta_average_pp !== null).map((row) => ({
                           competency_id: row.competency_id,
                           title: row.title,
+                          title_en: row.title_en,
                           slug: row.slug,
                           pre_percent: row.paired_pre_average ?? 0,
                           post_percent: row.paired_post_average ?? 0,
                           delta_pp: row.delta_average_pp ?? 0,
                           level: null,
                         })),
-                        pre_overall: 0,
-                        post_overall: 0,
+                        pre_overall: pairedAverage.pre,
+                        post_overall: pairedAverage.post,
                       }}
                     />
                   </div>
@@ -1704,23 +1732,23 @@ export function TeacherResultsPage() {
               {results.data.competency_averages.length > 0 ? (
                 <Card>
                   <h2 className="text-lg font-bold text-ink-950">
-                    Құзыреттіліктер бойынша орташа
+                    {t("Құзыреттіліктер бойынша орташа", "Average by competency")}
                   </h2>
                   <div className="mt-4 overflow-x-auto">
                     <table className="w-full min-w-[36rem] text-left text-sm">
                       <thead className="bg-slate-50 text-xs font-bold text-slate-600 uppercase">
                         <tr>
-                          <th className="px-3 py-2">Құзыреттілік</th>
+                          <th className="px-3 py-2">{t("Құзыреттілік", "Competency")}</th>
                           <th className="px-3 py-2 text-right">Pre</th>
                           <th className="px-3 py-2 text-right">Post</th>
                           <th className="px-3 py-2 text-right">Δ</th>
-                          <th className="px-3 py-2 text-right">Оқушылар</th>
+                          <th className="px-3 py-2 text-right">{t("Оқушылар", "Students")}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {results.data.competency_averages.map((row) => (
                           <tr key={row.competency_id} className="border-t border-slate-100">
-                            <td className="px-3 py-2 font-medium text-slate-700">{row.title}</td>
+                            <td className="px-3 py-2 font-medium text-slate-700">{language === "en" ? row.title_en || row.title : row.title}</td>
                             <td className="px-3 py-2 text-right">{formatPercent(row.pre_average)}</td>
                             <td className="px-3 py-2 text-right">{formatPercent(row.post_average)}</td>
                             <td className="px-3 py-2 text-right font-semibold text-brand-700">
@@ -1738,19 +1766,19 @@ export function TeacherResultsPage() {
               ) : null}
 
               <Card>
-                <h2 className="text-lg font-bold text-ink-950">Оқушылар бойынша</h2>
+                <h2 className="text-lg font-bold text-ink-950">{t("Оқушылар бойынша", "By student")}</h2>
                 {results.data.students.length === 0 ? (
-                  <p className="mt-2 text-sm text-slate-500">Сыныпта оқушы жоқ.</p>
+                  <p className="mt-2 text-sm text-slate-500">{t("Сыныпта оқушы жоқ.", "There are no students in this class.")}</p>
                 ) : (
                   <div className="mt-4 overflow-x-auto">
                     <table className="w-full min-w-[52rem] text-left text-sm">
                       <thead className="bg-slate-50 text-xs font-bold text-slate-600 uppercase">
                         <tr>
-                          <th className="px-3 py-2">Оқушы</th>
-                          <th className="px-3 py-2 text-right">Сабақ</th>
-                          <th className="px-3 py-2 text-right">Тапсырылды</th>
-                          <th className="px-3 py-2 text-right">Тексерілді</th>
-                          <th className="px-3 py-2 text-right">Орташа балл</th>
+                          <th className="px-3 py-2">{t("Оқушы", "Student")}</th>
+                          <th className="px-3 py-2 text-right">{t("Сабақ", "Lessons")}</th>
+                          <th className="px-3 py-2 text-right">{t("Тапсырылды", "Submitted")}</th>
+                          <th className="px-3 py-2 text-right">{t("Тексерілді", "Reviewed")}</th>
+                          <th className="px-3 py-2 text-right">{t("Орташа балл", "Average score")}</th>
                           <th className="px-3 py-2 text-right">Pre</th>
                           <th className="px-3 py-2 text-right">Post</th>
                         </tr>
@@ -1793,15 +1821,15 @@ export function TeacherResultsPage() {
       <div className="mt-6 flex flex-wrap gap-2">
         <LinkButton to="/teacher/classes" variant="secondary">
           <Users className="size-4" aria-hidden />
-          Сыныптар
+          {t("Сыныптар", "Classes")}
         </LinkButton>
         <LinkButton to="/teacher/diagnostics" variant="secondary">
           <ListChecks className="size-4" aria-hidden />
-          Диагностика
+          {t("Диагностика", "Assessments")}
         </LinkButton>
         <LinkButton to="/teacher/reviews" variant="secondary">
           <CheckCircle2 className="size-4" aria-hidden />
-          Тексерулер
+          {t("Тексерулер", "Reviews")}
         </LinkButton>
       </div>
     </div>

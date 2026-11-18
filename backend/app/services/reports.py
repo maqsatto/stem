@@ -172,6 +172,7 @@ def build_class_results(db: Session, classroom: Classroom) -> dict:
                 "competency_id": str(competency.id),
                 "slug": competency.slug,
                 "title": competency.title,
+                "title_en": (competency.translation_en or {}).get("title"),
                 "pre_average": round(sum(pre_values) / len(pre_values), 2) if pre_values else None,
                 "post_average": round(sum(post_values) / len(post_values), 2)
                 if post_values

@@ -9,6 +9,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { usePreferences, useText } from "@/shared/preferences";
 import type { PrePostComparison } from "@/shared/types";
 import { formatDelta, formatPercent } from "@/shared/format";
 import { EmptyState } from "@/shared/ui";
@@ -20,17 +21,19 @@ export function DiagnosticsChart({
   comparison: PrePostComparison | null | undefined;
   height?: number;
 }) {
+  const t = useText();
+  const { language, theme } = usePreferences();
   if (!comparison) {
     return (
       <EmptyState
-        title="Салыстырмалы диагностика әлі жоқ"
-        description="Pre-test және post-test талпыныстары аяқталғаннан кейін STEM құзыреттіліктерінің өзгерісі осында пайда болады."
+        title={t("Салыстырмалы диагностика әлі жоқ", "No comparison yet")}
+        description={t("Pre-test және post-test талпыныстары аяқталғаннан кейін STEM құзыреттіліктерінің өзгерісі осында пайда болады.", "STEM progress appears here once both pre-test and post-test attempts are complete.")}
       />
     );
   }
 
   const data = comparison.rows.map((row) => ({
-    name: row.title,
+    name: language === "en" ? row.title_en || row.title : row.title,
     pre: row.pre_percent,
     post: row.post_percent,
   }));
@@ -47,7 +50,7 @@ export function DiagnosticsChart({
           <p className="text-xl font-bold text-brand-900">{formatPercent(comparison.post_overall)}</p>
         </div>
         <div className="rounded-xl bg-amber-50 p-3">
-          <p className="text-xs font-semibold text-amber-800">Өзгеріс</p>
+          <p className="text-xs font-semibold text-amber-800">{t("Өзгеріс", "Change")}</p>
           <p className="text-xl font-bold text-amber-950">
             {formatDelta(comparison.overall_delta_pp)}
           </p>
@@ -63,7 +66,7 @@ export function DiagnosticsChart({
               angle={-20}
               textAnchor="end"
               height={72}
-              tick={{ fontSize: 11, fill: "#475569" }}
+              tick={{ fontSize: 11, fill: theme === "dark" ? "#c0c9d5" : "#475569" }}
             />
             <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} width={48} />
             <Tooltip />
@@ -77,16 +80,16 @@ export function DiagnosticsChart({
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs font-bold text-slate-600 uppercase">
             <tr>
-              <th className="px-3 py-2">Құзыреттілік</th>
+              <th className="px-3 py-2">{t("Құзыреттілік", "Competency")}</th>
               <th className="px-3 py-2 text-right">Pre</th>
               <th className="px-3 py-2 text-right">Post</th>
-              <th className="px-3 py-2 text-right">Δ п.п.</th>
+              <th className="px-3 py-2 text-right">{t("Δ п.п.", "Δ pp")}</th>
             </tr>
           </thead>
           <tbody>
             {comparison.rows.map((row) => (
               <tr key={row.competency_id} className="border-t border-slate-100">
-                <td className="px-3 py-2 text-slate-700">{row.title}</td>
+                <td className="px-3 py-2 text-slate-700">{language === "en" ? row.title_en || row.title : row.title}</td>
                 <td className="px-3 py-2 text-right">{formatPercent(row.pre_percent)}</td>
                 <td className="px-3 py-2 text-right">{formatPercent(row.post_percent)}</td>
                 <td className="px-3 py-2 text-right font-semibold text-brand-800">
@@ -98,8 +101,7 @@ export function DiagnosticsChart({
         </table>
       </div>
       <p className="mt-3 text-xs leading-5 text-slate-500">
-        Диагностика өлшенген нәтижені көрсетеді, бірақ әдістеменің себептік әсерін
-        дәлелдемейді. Салыстыру бір әдістеме кілті мен бір нұсқа шеңберінде жүргізіледі.
+        {t("Диагностика өлшенген нәтижені көрсетеді, бірақ әдістеменің себептік әсерін дәлелдемейді. Салыстыру бір әдістеме кілті мен бір нұсқа шеңберінде жүргізіледі.", "The assessment shows measured results but does not establish a causal effect. Comparisons use the same methodology key and version.")}
       </p>
     </div>
   );

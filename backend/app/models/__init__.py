@@ -9,6 +9,7 @@ from app.models.assessment import (
 from app.models.audit import AuditLog
 from app.models.classroom import (
     Assignment,
+    AssignmentProgress,
     Classroom,
     ClassroomMember,
     LessonProgress,
@@ -53,6 +54,7 @@ __all__ = [
     "AssessmentKind",
     "AssessmentQuestion",
     "Assignment",
+    "AssignmentProgress",
     "AssignmentContentType",
     "AssignmentStatus",
     "AttemptStatus",

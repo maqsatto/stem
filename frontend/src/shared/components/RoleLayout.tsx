@@ -27,6 +27,8 @@ import { NavLink, Outlet } from "react-router-dom";
 
 import { useAuth } from "@/shared/auth";
 import { Brand } from "@/shared/components/AppShell";
+import { PreferenceControls } from "@/shared/components/PreferenceControls";
+import { useText } from "@/shared/preferences";
 import { AccessGuard } from "@/shared/components/AccessGuard";
 import { roleLabels } from "@/shared/format";
 import { buttonClass } from "@/shared/ui";
@@ -85,6 +87,17 @@ const roleDescriptions: Record<Role, string> = {
 };
 
 function RoleNav({ role, mobile = false }: { role: Role; mobile?: boolean }) {
+  const t = useText();
+  const translations: Record<string, string> = {
+    "Менің оқуым": "My learning", "Сабақтар": "Lessons", "Тапсырмалар": "Tasks",
+    "Жобалар": "Projects", "Диагностика": "Assessment", "Нәтижелер": "Results",
+    "Менің сыныбым": "My class", "Практика": "Practice", "Шолу": "Overview",
+    "Әдістеме": "Methodology", "Оқу бағдарламасы": "Curriculum", "Сыныптар": "Classes",
+    "Тағайындаулар": "Assignments", "Тексерулер": "Reviews", "Құралдар": "Tools",
+    "Мазмұн каталогы": "Content library", "ML алгоритмдері": "ML algorithms",
+    "STEM құзыреттіліктері": "STEM competencies", "Диагностикалар": "Assessments",
+    "Файлдар": "Files", "Пайдаланушылар": "Users",
+  };
   return (
     <nav
       aria-label={`${roleLabels[role]} кабинетінің навигациясы`}
@@ -116,7 +129,7 @@ function RoleNav({ role, mobile = false }: { role: Role; mobile?: boolean }) {
             }
           >
             <Icon className={mobile ? "size-3.5" : "size-4"} aria-hidden />
-            {item.label}
+            {t(item.label, translations[item.label] ?? item.label)}
           </NavLink>
         );
       })}
@@ -126,6 +139,13 @@ function RoleNav({ role, mobile = false }: { role: Role; mobile?: boolean }) {
 
 export function RoleLayout({ role }: { role: Role }) {
   const { user, logout } = useAuth();
+  const t = useText();
+  const roleName = { student: t("Оқушы", "Student"), teacher: t("Мұғалім", "Teacher"), admin: t("Әкімші", "Administrator") }[role];
+  const roleDescription = {
+    student: t(roleDescriptions.student, "Learning, assignments and STEM progress"),
+    teacher: t(roleDescriptions.teacher, "Classes, assignments and assessments"),
+    admin: t(roleDescriptions.admin, "Content and platform administration"),
+  }[role];
 
   return (
     <AccessGuard roles={[role]}>
@@ -133,7 +153,7 @@ export function RoleLayout({ role }: { role: Role }) {
         <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-slate-200 bg-white lg:flex">
           <div className="border-b border-slate-200 px-5 py-4">
             <Brand />
-            <p className="mt-3 text-xs leading-5 text-slate-500">{roleDescriptions[role]}</p>
+            <p className="mt-3 text-xs leading-5 text-slate-500">{roleDescription}</p>
           </div>
           <div className="flex-1 overflow-y-auto">
             <RoleNav role={role} />
@@ -143,7 +163,7 @@ export function RoleLayout({ role }: { role: Role }) {
               <p className="truncate text-sm font-semibold text-ink-950">{user?.display_name}</p>
               <p className="truncate text-xs text-slate-500">{user?.email}</p>
               <p className="mt-1 text-[10px] font-bold tracking-wide text-brand-700 uppercase">
-                {roleLabels[role]}
+                {roleName}
               </p>
             </div>
             <button
@@ -151,7 +171,7 @@ export function RoleLayout({ role }: { role: Role }) {
               onClick={() => void logout()}
             >
               <LogOut className="size-4" aria-hidden />
-              Шығу
+              {t("Шығу", "Log out")}
             </button>
           </div>
         </aside>
@@ -164,22 +184,23 @@ export function RoleLayout({ role }: { role: Role }) {
               </div>
               <div className="hidden lg:block">
                 <p className="text-xs font-bold tracking-[0.18em] text-brand-700 uppercase">
-                  {roleLabels[role]} кабинеті
+                  {t(`${roleLabels[role]} кабинеті`, `${roleName} dashboard`)}
                 </p>
-                <p className="text-sm text-slate-500">{roleDescriptions[role]}</p>
+                <p className="text-sm text-slate-500">{roleDescription}</p>
               </div>
               <div className="flex items-center gap-3">
+                <PreferenceControls />
                 <div className="hidden text-right sm:block">
                   <p className="text-sm font-semibold text-ink-950">{user?.display_name}</p>
-                  <p className="text-xs text-slate-500">{roleLabels[role]}</p>
+                  <p className="text-xs text-slate-500">{roleName}</p>
                 </div>
                 <button
                   className={buttonClass("ghost", "sm")}
                   onClick={() => void logout()}
-                  aria-label="Аккаунттан шығу"
+                  aria-label={t("Аккаунттан шығу", "Log out")}
                 >
                   <LogOut className="size-4" aria-hidden />
-                  <span className="hidden sm:inline">Шығу</span>
+                  <span className="hidden sm:inline">{t("Шығу", "Log out")}</span>
                 </button>
               </div>
             </div>

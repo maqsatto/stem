@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user, get_optional_user, require_roles
 from app.core.errors import ApiError
 from app.db.session import get_db
-from app.models.classroom import LessonProgress
+from app.models.classroom import Assignment, LessonProgress
 from app.models.content import (
     Algorithm,
     Competency,
@@ -38,7 +38,7 @@ from app.schemas.content import (
     TaskDetail,
 )
 from app.services import serializers
-from app.services.access import content_is_visible, not_found
+from app.services.access import content_is_visible, ensure_classroom_access, not_found
 from app.services.storage import storage_path
 
 router = APIRouter(tags=["catalog"])
@@ -65,7 +65,7 @@ def list_algorithms(
     query = select(Algorithm).where(Algorithm.status == "published")
     if q:
         query = query.where(
-            or_(Algorithm.title.ilike(f"%{q}%"), Algorithm.summary.ilike(f"%{q}%"))
+            or_(Algorithm.title.ilike(f"%{q}%"), Algorithm.title_en.ilike(f"%{q}%"), Algorithm.summary.ilike(f"%{q}%"), Algorithm.translation_en["summary"].as_string().ilike(f"%{q}%"))
         )
     query = query.order_by(Algorithm.sort_order, Algorithm.title)
     items, total = _page(db, query, page, page_size)
@@ -139,19 +139,25 @@ def list_lessons(
     q: str | None = None,
     algorithm_id: uuid.UUID | None = None,
     competency_id: uuid.UUID | None = None,
+    sort: str = Query(default="order", pattern="^(order|title|date)$"),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_user),
 ):
     query = select(Lesson).where(Lesson.status == "published")
     if q:
-        query = query.where(or_(Lesson.title.ilike(f"%{q}%"), Lesson.summary.ilike(f"%{q}%")))
+        query = query.where(or_(Lesson.title.ilike(f"%{q}%"), Lesson.summary.ilike(f"%{q}%"), Lesson.translation_en["title"].as_string().ilike(f"%{q}%"), Lesson.translation_en["summary"].as_string().ilike(f"%{q}%")))
     if algorithm_id:
         query = query.where(Lesson.algorithm_id == algorithm_id)
     if competency_id:
         query = query.where(
             Lesson.competency_links.any(LessonCompetency.competency_id == competency_id)
         )
-    query = query.order_by(Lesson.order_no, Lesson.title)
+    if sort == "date":
+        query = query.order_by(Lesson.created_at.desc(), Lesson.id)
+    elif sort == "title":
+        query = query.order_by(Lesson.title, Lesson.id)
+    else:
+        query = query.order_by(Lesson.order_no, Lesson.title, Lesson.id)
     items, total = _page(db, query, page, page_size)
     completed_ids: set[uuid.UUID] = set()
     if user and user.role == Role.student.value:
@@ -216,6 +222,7 @@ def list_tasks(
     algorithm_id: uuid.UUID | None = None,
     competency_id: uuid.UUID | None = None,
     lesson_id: uuid.UUID | None = None,
+    classroom_id: uuid.UUID | None = None,
     difficulty: str | None = None,
     type: str | None = None,
     sort: str = Query(default="order", pattern="^(order|difficulty|title|date)$"),
@@ -223,8 +230,17 @@ def list_tasks(
     user: User | None = Depends(get_optional_user),
 ):
     query = select(Task).where(Task.status == "published")
+    if classroom_id:
+        if user is None:
+            raise ApiError(401, "unauthorized", "Алдымен жүйеге кіріңіз.")
+        ensure_classroom_access(db, user, classroom_id)
+        query = query.where(Task.id.in_(select(Assignment.content_id).where(
+            Assignment.classroom_id == classroom_id,
+            Assignment.content_type == "task",
+            Assignment.status == "active",
+        )))
     if q:
-        query = query.where(or_(Task.title.ilike(f"%{q}%"), Task.instructions.ilike(f"%{q}%")))
+        query = query.where(or_(Task.title.ilike(f"%{q}%"), Task.instructions.ilike(f"%{q}%"), Task.translation_en["title"].as_string().ilike(f"%{q}%"), Task.translation_en["instructions"].as_string().ilike(f"%{q}%")))
     if algorithm_id:
         query = query.where(Task.algorithm_id == algorithm_id)
     if lesson_id:
@@ -274,19 +290,25 @@ def list_projects(
     q: str | None = None,
     algorithm_id: uuid.UUID | None = None,
     competency_id: uuid.UUID | None = None,
+    sort: str = Query(default="order", pattern="^(order|title|date)$"),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_user),
 ):
     query = select(Project).where(Project.status == "published")
     if q:
         query = query.where(
-            or_(Project.title.ilike(f"%{q}%"), Project.summary.ilike(f"%{q}%"))
+            or_(Project.title.ilike(f"%{q}%"), Project.summary.ilike(f"%{q}%"), Project.translation_en["title"].as_string().ilike(f"%{q}%"), Project.translation_en["summary"].as_string().ilike(f"%{q}%"))
         )
     if algorithm_id:
         query = query.where(Project.algorithm_id == algorithm_id)
     if competency_id:
         query = query.where(Project.competency_links.any(ProjectCompetency.competency_id == competency_id))
-    query = query.order_by(Project.sort_order, Project.title)
+    if sort == "date":
+        query = query.order_by(Project.created_at.desc(), Project.id)
+    elif sort == "title":
+        query = query.order_by(Project.title, Project.id)
+    else:
+        query = query.order_by(Project.sort_order, Project.title, Project.id)
     items, total = _page(db, query, page, page_size)
     return Page(
         items=[serializers.project_card(item) for item in items],

@@ -1,3 +1,5 @@
+import DOMPurify from "dompurify";
+
 export function RichTextRenderer({
   html,
   className,
@@ -11,8 +13,8 @@ export function RichTextRenderer({
   return (
     <div
       className={["prose-content", className].filter(Boolean).join(" ")}
-      // The API sanitizes HTML with bleach before storing and returning it.
-      dangerouslySetInnerHTML={{ __html: html }}
+      // Draft previews can contain unsaved HTML that has not reached the API yet.
+      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
     />
   );
 }

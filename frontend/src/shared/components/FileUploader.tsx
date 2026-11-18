@@ -5,6 +5,7 @@ import { errorMessage, http } from "@/shared/api";
 import { formatBytes } from "@/shared/format";
 import type { Resource } from "@/shared/types";
 import { Alert, Button } from "@/shared/ui";
+import { useText } from "@/shared/preferences";
 
 export function FileUploader({
   endpoint = "/uploads",
@@ -12,8 +13,8 @@ export function FileUploader({
   onUploaded,
   onRemoved,
   accept = ".pdf,.docx,.pptx,.csv,.xlsx,.ipynb,.png,.jpg,.jpeg,.webp",
-  label = "Файл жүктеу",
-  hint = "PDF, DOCX, PPTX, CSV, XLSX, IPYNB, PNG, JPG немесе WEBP · 25 МБ-қа дейін",
+  label,
+  hint,
   disabled = false,
 }: {
   endpoint?: string;
@@ -25,6 +26,7 @@ export function FileUploader({
   hint?: string;
   disabled?: boolean;
 }) {
+  const t = useText();
   const inputId = useId();
   const [items, setItems] = useState<Resource[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -69,9 +71,9 @@ export function FileUploader({
       >
         <UploadCloud className="size-6 text-brand-700" aria-hidden />
         <span className="mt-2 text-sm font-semibold text-slate-800">
-          {uploading ? "Жүктелуде..." : label}
+          {uploading ? t("Жүктелуде...", "Uploading...") : (label ?? t("Файл жүктеу", "Upload file"))}
         </span>
-        <span className="mt-1 text-xs text-slate-500">{hint}</span>
+        <span className="mt-1 text-xs text-slate-500">{hint ?? t("PDF, DOCX, PPTX, CSV, XLSX, IPYNB, PNG, JPG немесе WEBP · 25 МБ-қа дейін", "PDF, DOCX, PPTX, CSV, XLSX, IPYNB, PNG, JPG or WEBP · up to 25 MB")}</span>
         <input
           id={inputId}
           type="file"
@@ -85,9 +87,9 @@ export function FileUploader({
           }}
         />
       </label>
-      {uploading ? <p className="text-xs text-slate-500">Файл тексеріліп, қауіпсіз сақтауға жүктелуде...</p> : null}
+      {uploading ? <p className="text-xs text-slate-500">{t("Файл тексеріліп, қауіпсіз сақтауға жүктелуде...", "Checking and uploading your file...")}</p> : null}
       {error ? (
-        <Alert tone="error" title="Файлды жүктеу мүмкін болмады">
+        <Alert tone="error" title={t("Файлды жүктеу мүмкін болмады", "Could not upload file")}>
           {error}
         </Alert>
       ) : null}
@@ -108,7 +110,7 @@ export function FileUploader({
                 variant="ghost"
                 size="sm"
                 onClick={() => void remove(item)}
-                aria-label={`${item.title} файлын жою`}
+                aria-label={t(`${item.title} файлын жою`, `Remove ${item.title}`)}
               >
                 <Trash2 className="size-4 text-rose-600" aria-hidden />
               </Button>

@@ -7,6 +7,7 @@ import { errorMessage, http } from "@/shared/api";
 import { FileUploader } from "@/shared/components/FileUploader";
 import type { Resource, Submission } from "@/shared/types";
 import { Alert, Button, Field, TextArea, TextInput } from "@/shared/ui";
+import { useText } from "@/shared/preferences";
 
 const schema = z.object({
   text: z.string().max(20000, "Мәтін 20 000 таңбадан аспауы керек").optional(),
@@ -26,6 +27,7 @@ export function SubmissionForm({
   existing?: Submission | null;
   onSubmitted?: (submission: Submission) => void;
 }) {
+  const t = useText();
   const [fileIds, setFileIds] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [files, setFiles] = useState<Resource[]>([]);
@@ -40,12 +42,12 @@ export function SubmissionForm({
 
   if (existing?.status === "reviewed") {
     return (
-      <Alert tone="success" title="Жұмыс тексерілген">
+      <Alert tone="success" title={t("Жұмыс тексерілген", "Work reviewed")}>
         <p>
-          Баға: <strong>{existing.grade ?? "—"}</strong>
+          {t("Баға", "Score")}: <strong>{existing.grade ?? "—"}</strong>
           {existing.max_score ? ` / ${existing.max_score}` : ""}
         </p>
-        {existing.feedback ? <p className="mt-1">Мұғалім пікірі: {existing.feedback}</p> : null}
+        {existing.feedback ? <p className="mt-1">{t("Мұғалім пікірі", "Teacher feedback")}: {existing.feedback}</p> : null}
       </Alert>
     );
   }
@@ -55,11 +57,11 @@ export function SubmissionForm({
     const text = values.text?.trim() ?? "";
     const link = values.link?.trim() ?? "";
     if (link && !link.startsWith("https://")) {
-      setFormError("Сілтеме тек HTTPS протоколымен басталуы керек.");
+      setFormError(t("Сілтеме тек HTTPS протоколымен басталуы керек.", "The link must start with HTTPS."));
       return;
     }
     if (!text && !link && fileIds.length === 0) {
-      setFormError("Мәтін, HTTPS сілтеме немесе файл қосыңыз.");
+      setFormError(t("Мәтін, HTTPS сілтеме немесе файл қосыңыз.", "Add text, an HTTPS link or a file."));
       return;
     }
     try {
@@ -84,30 +86,30 @@ export function SubmissionForm({
   return (
     <form onSubmit={(event) => void handleSubmit(submit)(event)} className="space-y-5">
       {existing?.status === "returned" ? (
-        <Alert tone="warning" title="Жұмыс қайта өңдеуге қайтарылды">
-          {existing.feedback ?? "Мұғалім пікірін қарап, жұмысты түзетіңіз."}
+        <Alert tone="warning" title={t("Жұмыс қайта өңдеуге қайтарылды", "Work returned for revision")}>
+          {existing.feedback ?? t("Мұғалім пікірін қарап, жұмысты түзетіңіз.", "Read the teacher's feedback and revise your work.")}
         </Alert>
       ) : null}
       {showText ? (
         <Field
-          label={showLink ? "Түсіндірме немесе жауап мәтіні" : "Жауап мәтіні"}
+          label={showLink ? t("Түсіндірме немесе жауап мәтіні", "Explanation or answer") : t("Жауап мәтіні", "Answer")}
           htmlFor="submission-text"
           error={errors.text?.message}
-          hint="Жұмысыңызды, қолданған әдісіңізді және қорытындыңызды сипаттаңыз."
+          hint={t("Жұмысыңызды, қолданған әдісіңізді және қорытындыңызды сипаттаңыз.", "Describe your work, method and conclusion.")}
         >
           <TextArea
             id="submission-text"
-            placeholder="Мысалы: деректер жиынтығын тазалап, модельді оқыттым..."
+            placeholder={t("Мысалы: деректер жиынтығын тазалап, модельді оқыттым...", "For example: I cleaned the dataset and trained a model...")}
             {...register("text")}
           />
         </Field>
       ) : null}
       {showLink ? (
         <Field
-          label="HTTPS сілтеме"
+          label={t("HTTPS сілтеме", "HTTPS link")}
           htmlFor="submission-link"
           error={errors.link?.message}
-          hint="Google Colab, Teachable Machine немесе басқа ашық HTTPS ресурсы."
+          hint={t("Google Colab, Teachable Machine немесе басқа ашық HTTPS ресурсы.", "Google Colab, Teachable Machine or another HTTPS resource.")}
         >
           <TextInput
             id="submission-link"
@@ -119,8 +121,8 @@ export function SubmissionForm({
       ) : null}
       {showFiles ? (
         <Field
-          label="Файл тіркеу"
-          hint="Файл жүктелгеннен кейін жіберу батырмасын басыңыз."
+          label={t("Файл тіркеу", "Attach a file")}
+          hint={t("Файл жүктелгеннен кейін жіберу батырмасын басыңыз.", "Submit your work after uploading the file.")}
         >
           <FileUploader
             onUploaded={(resource) => {
@@ -135,11 +137,11 @@ export function SubmissionForm({
         </Field>
       ) : null}
       {files.length > 0 ? (
-        <p className="text-xs text-slate-500">Тіркелген файл саны: {files.length}</p>
+        <p className="text-xs text-slate-500">{t("Тіркелген файл саны", "Attached files")}: {files.length}</p>
       ) : null}
       {formError ? <Alert tone="error">{formError}</Alert> : null}
       <Button type="submit" loading={isSubmitting}>
-        Жұмысты жіберу
+        {t("Жұмысты жіберу", "Submit work")}
       </Button>
     </form>
   );

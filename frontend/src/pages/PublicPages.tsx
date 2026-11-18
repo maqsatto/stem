@@ -26,6 +26,8 @@ import { ResourceList } from "@/shared/components/ContentBits";
 import { RichTextRenderer } from "@/shared/components/RichTextRenderer";
 import { difficultyLabels, formatDate, levelLabels, taskTypeLabels } from "@/shared/format";
 import { useDebouncedValue, useTitle } from "@/shared/hooks";
+import { usePreferences, useText } from "@/shared/preferences";
+import { localizeAlgorithm, localizeCompetency, localizeProject, localizeRefTitle } from "@/shared/localizeContent";
 import type {
   AlgorithmCard,
   AlgorithmDetail,
@@ -45,6 +47,7 @@ import {
   PageHeader,
   PageLoader,
   Pagination,
+  Select,
   TextInput,
 } from "@/shared/ui";
 
@@ -63,7 +66,9 @@ function publicContentLink(
 }
 
 export function HomePage() {
-  useTitle("Басты бет");
+  const t = useText();
+  const { language } = usePreferences();
+  useTitle(t("Басты бет", "Home"));
   const { user } = useAuth();
   const algorithms = useQuery({
     queryKey: ["public", "algorithms", "home"],
@@ -93,22 +98,20 @@ export function HomePage() {
           <div>
             <span className="inline-flex items-center gap-2 rounded-md bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-800">
               <Sparkles className="size-3.5" aria-hidden />
-              Машиналық оқыту · STEM · Жобалар
+              {t("Машиналық оқыту · STEM · Жобалар", "Machine learning · STEM · Projects")}
             </span>
             <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
               ML + STEM LAB
               <span className="mt-3 block text-2xl font-semibold text-brand-600 sm:text-3xl">
-                STEM-құзыреттіліктерді ML алгоритмдері арқылы дамыту
+                {t("STEM-құзыреттіліктерді ML алгоритмдері арқылы дамыту", "Build STEM skills with machine learning")}
               </span>
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600">
-              Біртұтас оқу платформасы: алгоритмді үйрену → зерттеу жүргізу → STEM жобасын
-              қорғау → диагностика арқылы өзгерісті өлшеу. Мұғалім сыныпты басқарады,
-              оқушы өз қарқынымен оқиды, әкімші мазмұнды өз бетінше жариялайды.
+              {t("Біртұтас оқу платформасы: алгоритмді үйрену → зерттеу жүргізу → STEM жобасын қорғау → диагностика арқылы өзгерісті өлшеу. Мұғалім сыныпты басқарады, оқушы өз қарқынымен оқиды, әкімші мазмұнды өз бетінше жариялайды.", "Learn algorithms, explore ideas, build STEM projects and track your progress. Teachers manage classes while students learn at their own pace.")}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <LinkButton to="/ml" size="lg">
-                ML каталогын ашу
+                {t("ML каталогын ашу", "Explore ML")}
                 <ArrowRight className="size-4" aria-hidden />
               </LinkButton>
               <LinkButton
@@ -117,14 +120,12 @@ export function HomePage() {
                 variant="secondary"
                 className="border-slate-300 bg-white text-slate-800 hover:border-brand-400 hover:bg-brand-50"
               >
-                {user ? "Менің кабинетім" : "Кіру"}
+                {user ? t("Менің кабинетім", "My dashboard") : t("Кіру", "Log in")}
               </LinkButton>
             </div>
             <div className="mt-8 max-w-xl">
               <DemoNotice>
-                Демо-контент: 3 ML алгоритмі, 5 STEM құзыреттілігі, 6 демо-сабақ, 18 тапсырма,
-                4 жоба және pre/post диагностика үлгісі. Нақты ғылыми-әдістемелік мазмұнды
-                тапсырыс беруші бекітеді.
+                {t("Демо-контент: 3 ML алгоритмі, 5 STEM құзыреттілігі, 6 демо-сабақ, 18 тапсырма, 4 жоба және pre/post диагностика үлгісі. Нақты ғылыми-әдістемелік мазмұнды тапсырыс беруші бекітеді.", "Demo content: 3 ML algorithms, 5 STEM competencies, 6 lessons, 18 tasks, 4 projects and sample pre/post assessments. Educational content requires approval.")}
               </DemoNotice>
             </div>
           </div>
@@ -132,22 +133,22 @@ export function HomePage() {
             {[
               {
                 step: "01",
-                title: "ML алгоритм",
-                text: "Классификация, регрессия, шешім ағаштары — қарапайым тілмен және мысалдармен.",
+                title: t("ML алгоритм", "ML algorithms"),
+                text: t("Классификация, регрессия, шешім ағаштары — қарапайым тілмен және мысалдармен.", "Classification, regression and decision trees explained through examples."),
                 icon: BrainCircuit,
                 to: "/ml",
               },
               {
                 step: "02",
-                title: "STEM құзыреттілік",
-                text: "Логика, деректер, зерттеу, инженерия және шығармашылық — әрқайсысы өлшенетін индикаторлармен.",
+                title: t("STEM құзыреттілік", "STEM competencies"),
+                text: t("Логика, деректер, зерттеу, инженерия және шығармашылық — әрқайсысы өлшенетін индикаторлармен.", "Develop logic, data, research, engineering and creative skills."),
                 icon: Target,
                 to: "/stem",
               },
               {
                 step: "03",
-                title: "STEM жоба",
-                text: "Нақты мәселені ML құралдарымен шешу: идеядан нәтижеге дейінгі қадамдар.",
+                title: t("STEM жоба", "STEM projects"),
+                text: t("Нақты мәселені ML құралдарымен шешу: идеядан нәтижеге дейінгі қадамдар.", "Use ML tools to solve a real problem, from idea to result."),
                 icon: FolderKanban,
                 to: "/projects",
               },
@@ -180,45 +181,43 @@ export function HomePage() {
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-brand-200 bg-brand-50 p-5">
             <p className="text-xs font-bold tracking-wide text-brand-700 uppercase">
-              ML алгоритмдері
+              {t("ML алгоритмдері", "ML algorithms")}
             </p>
             <p className="mt-2 text-4xl font-extrabold text-brand-900">
               {algorithms.data?.total ?? "—"}
             </p>
-            <p className="mt-1 text-xs text-brand-700">Теория + STEM-байланыс</p>
+            <p className="mt-1 text-xs text-brand-700">{t("Теория + STEM-байланыс", "Theory and STEM connections")}</p>
           </div>
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
             <p className="text-xs font-bold tracking-wide text-amber-800 uppercase">
-              STEM құзыреттіліктері
+              {t("STEM құзыреттіліктері", "STEM competencies")}
             </p>
             <p className="mt-2 text-4xl font-extrabold text-amber-950">
               {competencies.data?.total ?? "—"}
             </p>
-            <p className="mt-1 text-xs text-amber-800">Индикаторлар мен деңгейлер</p>
+            <p className="mt-1 text-xs text-amber-800">{t("Индикаторлар мен деңгейлер", "Indicators and levels")}</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
-              STEM жобалары
+              {t("STEM жобалары", "STEM projects")}
             </p>
             <p className="mt-2 text-4xl font-extrabold text-ink-950">
               {projects.data?.total ?? "—"}
             </p>
-            <p className="mt-1 text-xs text-slate-500">Практикалық сценарийлер</p>
+            <p className="mt-1 text-xs text-slate-500">{t("Практикалық сценарийлер", "Practical scenarios")}</p>
           </div>
         </div>
 
         <div className="mt-14 flex items-end justify-between gap-4">
           <div>
             <p className="text-xs font-bold tracking-[0.18em] text-brand-700 uppercase">
-              Оқу бағыты
+              {t("Оқу бағыты", "Learning path")}
             </p>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-ink-950">
-              ML → STEM → жоба
+              {t("ML → STEM → жоба", "ML → STEM → project")}
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Әр алгоритм STEM құзыреттіліктерімен байланысады, ал әр құзыреттілік нақты
-              сабақтар, тапсырмалар және жобалар арқылы дамиды. Бұл — бір оқу тізбегі, үш
-              бөлек сайт емес.
+              {t("Әр алгоритм STEM құзыреттіліктерімен байланысады, ал әр құзыреттілік нақты сабақтар, тапсырмалар және жобалар арқылы дамиды.", "Each algorithm connects to STEM competencies, developed through lessons, tasks and projects.")}
             </p>
           </div>
         </div>
@@ -235,14 +234,14 @@ export function HomePage() {
               <ContentCard
                 key={algorithm.id}
                 to={`/ml/${algorithm.slug}`}
-                title={algorithm.title}
+                title={t(algorithm.title, algorithm.title_en || algorithm.title)}
                 meta={algorithm.title_en}
-                description={algorithm.summary}
+                description={localizeAlgorithm(algorithm, language).summary}
                 icon={<BrainCircuit className="size-5" aria-hidden />}
                 demo={algorithm.is_demo}
                 footer={
                   <span className="inline-flex items-center gap-1">
-                    Толығырақ <ArrowRight className="size-3.5" aria-hidden />
+                    {t("Толығырақ", "Learn more")} <ArrowRight className="size-3.5" aria-hidden />
                   </span>
                 }
               />
@@ -253,9 +252,9 @@ export function HomePage() {
         <div className="mt-14 grid gap-6 lg:grid-cols-2">
           <Card>
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-ink-950">STEM құзыреттіліктері</h2>
+              <h2 className="text-xl font-bold text-ink-950">{t("STEM құзыреттіліктері", "STEM competencies")}</h2>
               <Link to="/stem" className="text-xs font-semibold no-underline">
-                Барлығы
+                {t("Барлығы", "View all")}
               </Link>
             </div>
             <ul className="mt-4 space-y-2">
@@ -270,10 +269,10 @@ export function HomePage() {
                     </span>
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold text-ink-950">
-                        {item.title}
+                        {localizeCompetency(item, language).title}
                       </span>
                       <span className="block truncate text-xs text-slate-500">
-                        {item.description}
+                        {localizeCompetency(item, language).description}
                       </span>
                     </span>
                   </Link>
@@ -283,9 +282,9 @@ export function HomePage() {
           </Card>
           <Card>
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-ink-950">STEM жобалары</h2>
+              <h2 className="text-xl font-bold text-ink-950">{t("STEM жобалары", "STEM projects")}</h2>
               <Link to="/projects" className="text-xs font-semibold no-underline">
-                Барлығы
+                {t("Барлығы", "View all")}
               </Link>
             </div>
             <ul className="mt-4 space-y-2">
@@ -313,30 +312,30 @@ export function HomePage() {
 
         <div className="mt-14">
           <h2 className="text-2xl font-bold tracking-tight text-ink-950">
-            Платформа кімге арналған?
+            {t("Платформа кімге арналған?", "Who is it for?")}
           </h2>
           <div className="mt-5 grid gap-4 md:grid-cols-3">
             <Card>
               <GraduationCap className="size-7 text-brand-700" aria-hidden />
-              <h3 className="mt-3 text-lg font-bold text-ink-950">Оқушы</h3>
+              <h3 className="mt-3 text-lg font-bold text-ink-950">{t("Оқушы", "Student")}</h3>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Сабақтар, тапсырмалар, жобалар, диагностика және өз STEM динамикасы.
+                {t("Сабақтар, тапсырмалар, жобалар, диагностика және өз STEM динамикасы.", "Lessons, tasks, projects, assessments and personal progress.")}
               </p>
               <p className="mt-3 text-xs text-slate-500">Кіру: student@mlstem.kz / Student123!</p>
             </Card>
             <Card>
               <Users className="size-7 text-brand-700" aria-hidden />
-              <h3 className="mt-3 text-lg font-bold text-ink-950">Мұғалім</h3>
+              <h3 className="mt-3 text-lg font-bold text-ink-950">{t("Мұғалім", "Teacher")}</h3>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Сыныптар, тағайындаулар, тексерулер, әдістеме және CSV есептер.
+                {t("Сыныптар, тағайындаулар, тексерулер, әдістеме және CSV есептер.", "Classes, assignments, grading, teaching resources and CSV reports.")}
               </p>
               <p className="mt-3 text-xs text-slate-500">Кіру: teacher@mlstem.kz / Teacher123!</p>
             </Card>
             <Card>
               <BadgeCheck className="size-7 text-brand-700" aria-hidden />
-              <h3 className="mt-3 text-lg font-bold text-ink-950">Әкімші</h3>
+              <h3 className="mt-3 text-lg font-bold text-ink-950">{t("Әкімші", "Administrator")}</h3>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                CMS, файлдар, пайдаланушылар, сыныптар және публикация аудиті.
+                {t("CMS, файлдар, пайдаланушылар, сыныптар және публикация аудиті.", "Manage content, files, users, classes and publication history.")}
               </p>
               <p className="mt-3 text-xs text-slate-500">Кіру: admin@mlstem.kz / Admin123!</p>
             </Card>
@@ -348,7 +347,9 @@ export function HomePage() {
 }
 
 export function MlPage() {
-  useTitle("Машиналық оқыту");
+  const t = useText();
+  const { language } = usePreferences();
+  useTitle(t("Машиналық оқыту", "Machine learning"));
   const [search, setSearch] = useState("");
   const query = useDebouncedValue(search.trim(), 300);
   const [page, setPage] = useState(1);
@@ -363,20 +364,18 @@ export function MlPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <PageHeader
-        eyebrow="1-қадам · ML"
-        title="Машиналық оқыту алгоритмдері"
+        eyebrow={t("1-қадам · ML", "Step 1 · ML")}
+        title={t("Машиналық оқыту алгоритмдері", "Machine learning algorithms")}
         description={
           <>
-            Әр алгоритм — оқу әрекетінің бастауы. Мұнда теория, қолдану мысалдары және сол
-            алгоритм дамытатын STEM құзыреттіліктері көрсетіледі. Келесі қадам — STEM
-            құзыреттіліктері, содан кейін жоба.
+            {t("Әр алгоритм — оқу әрекетінің бастауы. Мұнда теория, қолдану мысалдары және сол алгоритм дамытатын STEM құзыреттіліктері көрсетіледі. Келесі қадам — STEM құзыреттіліктері, содан кейін жоба.", "Explore the theory, examples and STEM competencies associated with each algorithm, then continue to projects.")}
           </>
         }
-        actions={<LinkButton to="/stem" variant="secondary">STEM-ке өту</LinkButton>}
+        actions={<LinkButton to="/stem" variant="secondary">{t("STEM-ке өту", "Explore STEM")}</LinkButton>}
       />
       <div className="mb-6 max-w-md">
         <label htmlFor="algorithm-search" className="sr-only">
-          Алгоритм іздеу
+          {t("Алгоритм іздеу", "Search algorithms")}
         </label>
         <div className="relative">
           <Search className="pointer-events-none absolute top-3 left-3 size-4 text-slate-400" aria-hidden />
@@ -387,7 +386,7 @@ export function MlPage() {
               setSearch(event.target.value);
               setPage(1);
             }}
-            placeholder="Алгоритм атауы немесе сипаттамасы..."
+            placeholder={t("Алгоритм атауы немесе сипаттамасы...", "Algorithm name or description...")}
             className="pl-9"
           />
         </div>
@@ -398,8 +397,8 @@ export function MlPage() {
         <Alert tone="error">{errorMessage(algorithms.error)}</Alert>
       ) : (algorithms.data?.items.length ?? 0) === 0 ? (
         <EmptyState
-          title="Алгоритмдер табылмады"
-          description="Іздеу сөзін өзгертіп көріңіз немесе барлық материалдарды қараңыз."
+          title={t("Алгоритмдер табылмады", "No algorithms found")}
+          description={t("Іздеу сөзін өзгертіп көріңіз немесе барлық материалдарды қараңыз.", "Try a different search or browse all materials.")}
         />
       ) : (
         <>
@@ -408,14 +407,14 @@ export function MlPage() {
               <ContentCard
                 key={algorithm.id}
                 to={`/ml/${algorithm.slug}`}
-                title={algorithm.title}
+                title={t(algorithm.title, algorithm.title_en || algorithm.title)}
                 meta={algorithm.title_en}
-                description={algorithm.summary}
+                description={localizeAlgorithm(algorithm, language).summary}
                 icon={<BrainCircuit className="size-5" aria-hidden />}
                 demo={algorithm.is_demo}
                 footer={
                   <span className="inline-flex items-center gap-1">
-                    Алгоритмді ашу <ArrowRight className="size-3.5" aria-hidden />
+                    {t("Алгоритмді ашу", "Open algorithm")} <ArrowRight className="size-3.5" aria-hidden />
                   </span>
                 }
               />
@@ -437,13 +436,14 @@ export function MlPage() {
 }
 
 export function MlDetailPage() {
+  const { language } = usePreferences();
   const { slug = "" } = useParams();
   const { user } = useAuth();
   const algorithm = useQuery({
     queryKey: ["public", "algorithm", slug],
     queryFn: () => http.get<AlgorithmDetail>(`/algorithms/${slug}`),
   });
-  useTitle(algorithm.data?.title ?? "ML алгоритмі");
+  useTitle(algorithm.data ? localizeAlgorithm(algorithm.data, language).title : "ML алгоритмі");
 
   if (algorithm.isLoading) return <PageLoader />;
   if (algorithm.isError)
@@ -460,7 +460,7 @@ export function MlDetailPage() {
       </div>
     );
 
-  const data = algorithm.data;
+  const data = algorithm.data ? localizeAlgorithm(algorithm.data, language) : undefined;
   if (!data) return null;
 
   return (
@@ -476,7 +476,7 @@ export function MlDetailPage() {
             {data.status !== "published" ? <Badge tone="slate">Жоба</Badge> : null}
           </div>
           <h1 className="mt-3 text-4xl font-bold tracking-tight text-ink-950">{data.title}</h1>
-          {data.title_en ? <p className="mt-1 text-lg text-slate-500">{data.title_en}</p> : null}
+          {data.title_en && data.title_en !== data.title ? <p className="mt-1 text-lg text-slate-500">{data.title_en}</p> : null}
           <p className="mt-4 text-base leading-7 text-slate-600">{data.summary}</p>
           {data.cover_image ? (
             <img
@@ -497,7 +497,7 @@ export function MlDetailPage() {
                   <ContentCard
                     key={lesson.id}
                     to={publicContentLink(user?.role, "lesson", lesson.id)}
-                    title={lesson.title}
+                    title={localizeRefTitle(lesson, language)}
                     meta={`${lesson.order_no}-сабақ`}
                     icon={<BookOpen className="size-4" aria-hidden />}
                   />
@@ -514,7 +514,7 @@ export function MlDetailPage() {
                   <ContentCard
                     key={task.id}
                     to={publicContentLink(user?.role, "task", task.id)}
-                    title={task.title}
+                    title={localizeRefTitle(task, language)}
                     meta={`${taskTypeLabels[task.type] ?? task.type} · ${
                       difficultyLabels[task.difficulty] ?? task.difficulty
                     }`}
@@ -533,7 +533,7 @@ export function MlDetailPage() {
                   <ContentCard
                     key={project.id}
                     to={`/projects/${project.id}`}
-                    title={project.title}
+                    title={localizeRefTitle(project, language)}
                     description={project.summary}
                     icon={<FolderKanban className="size-4" aria-hidden />}
                   />
@@ -560,7 +560,7 @@ export function MlDetailPage() {
                     className="flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 no-underline hover:bg-brand-100"
                   >
                     <Target className="size-4 shrink-0" aria-hidden />
-                    {competency.title}
+                    {localizeRefTitle(competency, language)}
                   </Link>
                 </li>
               ))}
@@ -606,7 +606,9 @@ function ClipboardIcon() {
 }
 
 export function StemPage() {
-  useTitle("STEM құзыреттіліктері");
+  const { language } = usePreferences();
+  const t = useText();
+  useTitle(t("STEM құзыреттіліктері", "STEM competencies"));
   const competencies = useQuery({
     queryKey: ["public", "competencies"],
     queryFn: () => http.get<Page<CompetencyCard>>("/competencies?page_size=20"),
@@ -614,16 +616,14 @@ export function StemPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <PageHeader
-        eyebrow="2-қадам · STEM"
-        title="Бес STEM құзыреттілігі"
+        eyebrow={t("2-қадам · STEM", "Step 2 · STEM")}
+        title={t("Бес STEM құзыреттілігі", "Five STEM competencies")}
         description={
           <>
-            Құзыреттіліктер — алгоритм мен жобаны байланыстыратын өзек. Әр құзыреттілік
-            индикаторлар, критерийлер және оқу әрекеттері арқылы сипатталады. Диагностика
-            нәтижелері осы бес бағыт бойынша есептеледі.
+            {t("Құзыреттіліктер — алгоритм мен жобаны байланыстыратын өзек. Әр құзыреттілік индикаторлар, критерийлер және оқу әрекеттері арқылы сипатталады. Диагностика нәтижелері осы бес бағыт бойынша есептеледі.", "Competencies connect algorithms to projects. Each has indicators, criteria and learning activities; assessments measure progress across these five areas.")}
           </>
         }
-        actions={<LinkButton to="/projects" variant="secondary">Жобаларға өту</LinkButton>}
+        actions={<LinkButton to="/projects" variant="secondary">{t("Жобаларға өту", "Explore projects")}</LinkButton>}
       />
       {competencies.isLoading ? (
         <PageLoader />
@@ -637,14 +637,14 @@ export function StemPage() {
               <ContentCard
                 key={competency.id}
                 to={`/stem/${competency.slug}`}
-                title={competency.title}
-                description={competency.description}
+                title={localizeCompetency(competency, language).title}
+                description={localizeCompetency(competency, language).description}
                 icon={<Icon className="size-5" aria-hidden />}
                 demo={competency.is_demo}
-                meta={`${index + 1}-құзыреттілік`}
+                meta={t(`${index + 1}-құзыреттілік`, `Competency ${index + 1}`)}
                 footer={
                   <span className="inline-flex items-center gap-1">
-                    Индикаторларды көру <ArrowRight className="size-3.5" aria-hidden />
+                    {t("Индикаторларды көру", "View indicators")} <ArrowRight className="size-3.5" aria-hidden />
                   </span>
                 }
               />
@@ -654,8 +654,7 @@ export function StemPage() {
       )}
       <div className="mt-10">
         <DemoNotice>
-          Құзыреттіліктердің мазмұны, индикаторлары және деңгей критерийлері демо-үлгі
-          ретінде берілген. Ғылыми негізделген түпкілікті рубриканы тапсырыс беруші бекітеді.
+          {t("Құзыреттіліктердің мазмұны, индикаторлары және деңгей критерийлері демо-үлгі ретінде берілген. Ғылыми негізделген түпкілікті рубриканы тапсырыс беруші бекітеді.", "Competencies, indicators and levels are demonstration examples; the final rubric requires approval.")}
         </DemoNotice>
       </div>
     </div>
@@ -663,49 +662,51 @@ export function StemPage() {
 }
 
 export function StemDetailPage() {
+  const { language } = usePreferences();
+  const t = useText();
   const { slug = "" } = useParams();
   const { user } = useAuth();
   const competency = useQuery({
     queryKey: ["public", "competency", slug],
     queryFn: () => http.get<CompetencyDetail>(`/competencies/${slug}`),
   });
-  useTitle(competency.data?.title ?? "STEM құзыреттілігі");
+  useTitle(competency.data ? localizeCompetency(competency.data, language).title : t("STEM құзыреттілігі", "STEM competency"));
 
   if (competency.isLoading) return <PageLoader />;
   if (competency.isError)
     return (
       <div className="mx-auto max-w-3xl px-4 py-16">
-        <Alert tone="error" title="Құзыреттілік ашылмады">
+        <Alert tone="error" title={t("Құзыреттілік ашылмады", "Could not open competency")}>
           {errorMessage(competency.error)}
         </Alert>
         <div className="mt-4">
           <LinkButton to="/stem" variant="secondary">
-            STEM тізіміне оралу
+            {t("STEM тізіміне оралу", "Back to competencies")}
           </LinkButton>
         </div>
       </div>
     );
 
-  const data = competency.data;
+  const data = competency.data ? localizeCompetency(competency.data, language) : undefined;
   if (!data) return null;
   const criteria = Object.entries(data.criteria_json ?? {});
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <Link to="/stem" className="text-sm font-semibold no-underline">
-        ← STEM құзыреттіліктері
+        ← {t("STEM құзыреттіліктері", "STEM competencies")}
       </Link>
       <div className="mt-5 grid gap-8 lg:grid-cols-[1fr_20rem]">
         <article>
           <div className="flex flex-wrap gap-2">
-            <Badge tone="brand">STEM құзыреттілігі</Badge>
-            {data.is_demo ? <Badge tone="amber">Демо</Badge> : null}
+            <Badge tone="brand">{t("STEM құзыреттілігі", "STEM competency")}</Badge>
+            {data.is_demo ? <Badge tone="amber">{t("Демо", "Demo")}</Badge> : null}
           </div>
           <h1 className="mt-3 text-4xl font-bold tracking-tight text-ink-950">{data.title}</h1>
           <p className="mt-4 text-base leading-7 text-slate-600">{data.description}</p>
 
           <section className="mt-8">
-            <h2 className="text-xl font-bold text-ink-950">Индикаторлар</h2>
+            <h2 className="text-xl font-bold text-ink-950">{t("Индикаторлар", "Indicators")}</h2>
             <ul className="mt-3 space-y-2">
               {(data.indicators_json ?? []).map((indicator, index) => (
                 <li
@@ -723,12 +724,12 @@ export function StemDetailPage() {
 
           {criteria.length > 0 ? (
             <section className="mt-8">
-              <h2 className="text-xl font-bold text-ink-950">Деңгей критерийлері</h2>
+              <h2 className="text-xl font-bold text-ink-950">{t("Деңгей критерийлері", "Level criteria")}</h2>
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 {criteria.map(([level, description]) => (
                   <Card key={level} className="bg-slate-50">
                     <p className="text-xs font-bold tracking-wide text-brand-700 uppercase">
-                      {levelLabels[level] ?? level}
+                      {language === "en" ? ({ low: "Low", medium: "Medium", high: "High" } as Record<string, string>)[level] ?? level : levelLabels[level] ?? level}
                     </p>
                     <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
                   </Card>
@@ -739,13 +740,13 @@ export function StemDetailPage() {
 
           {data.lessons.length > 0 ? (
             <section className="mt-10">
-              <h2 className="text-xl font-bold text-ink-950">Байланысты сабақтар</h2>
+              <h2 className="text-xl font-bold text-ink-950">{t("Байланысты сабақтар", "Related lessons")}</h2>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {data.lessons.map((lesson) => (
                   <ContentCard
                     key={lesson.id}
                     to={publicContentLink(user?.role, "lesson", lesson.id)}
-                    title={lesson.title}
+                    title={localizeRefTitle(lesson, language)}
                     meta={`${lesson.order_no}-сабақ`}
                     icon={<BookOpen className="size-4" aria-hidden />}
                   />
@@ -757,7 +758,7 @@ export function StemDetailPage() {
           {data.tasks.length > 0 || data.projects.length > 0 ? (
             <section className="mt-10 grid gap-6 sm:grid-cols-2">
               <div>
-                <h2 className="text-xl font-bold text-ink-950">Тапсырмалар</h2>
+                <h2 className="text-xl font-bold text-ink-950">{t("Тапсырмалар", "Tasks")}</h2>
                 <ul className="mt-3 space-y-2">
                   {data.tasks.map((task) => (
                     <li key={task.id}>
@@ -765,14 +766,14 @@ export function StemDetailPage() {
                         to={publicContentLink(user?.role, "task", task.id)}
                         className="block rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm font-semibold text-slate-800 no-underline hover:border-brand-300"
                       >
-                        {task.title}
+                        {localizeRefTitle(task, language)}
                       </Link>
                     </li>
                   ))}
                 </ul>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-ink-950">Жобалар</h2>
+                <h2 className="text-xl font-bold text-ink-950">{t("Жобалар", "Projects")}</h2>
                 <ul className="mt-3 space-y-2">
                   {data.projects.map((project) => (
                     <li key={project.id}>
@@ -780,7 +781,7 @@ export function StemDetailPage() {
                         to={`/projects/${project.id}`}
                         className="block rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm font-semibold text-slate-800 no-underline hover:border-brand-300"
                       >
-                        {project.title}
+                        {localizeRefTitle(project, language)}
                       </Link>
                     </li>
                   ))}
@@ -792,7 +793,7 @@ export function StemDetailPage() {
 
         <aside className="space-y-4">
           <Card>
-            <h2 className="text-sm font-bold text-ink-950">Байланысты ML алгоритмдері</h2>
+            <h2 className="text-sm font-bold text-ink-950">{t("Байланысты ML алгоритмдері", "Related ML algorithms")}</h2>
             <ul className="mt-3 space-y-2">
               {data.algorithms.map((algorithm) => (
                 <li key={algorithm.id}>
@@ -801,27 +802,25 @@ export function StemDetailPage() {
                     className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 no-underline hover:bg-brand-50"
                   >
                     <BrainCircuit className="size-4 shrink-0 text-brand-700" aria-hidden />
-                    {algorithm.title}
+                    {language === "en" && algorithm.title_en ? algorithm.title_en : algorithm.title}
                   </Link>
                 </li>
               ))}
             </ul>
           </Card>
           <Card>
-            <h2 className="text-sm font-bold text-ink-950">Бұл құзыреттілік қалай дамиды?</h2>
+            <h2 className="text-sm font-bold text-ink-950">{t("Бұл құзыреттілік қалай дамиды?", "How is this competency developed?")}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Оқушы алгоритмді үйренеді, оны қолданатын тапсырманы орындайды, жобада нақты
-              мәселені шешеді. Даму деңгейі pre/post диагностика арқылы өлшенеді.
+              {t("Оқушы алгоритмді үйренеді, оны қолданатын тапсырманы орындайды, жобада нақты мәселені шешеді. Даму деңгейі pre/post диагностика арқылы өлшенеді.", "Students learn an algorithm, apply it in a task, and solve a real problem in a project. Progress is measured with pre/post assessments.")}
             </p>
             <div className="mt-4">
               <LinkButton to={user ? roleHome(user.role) : "/login"} size="sm" className="w-full">
-                {user ? "Кабинетке өту" : "Кіру"}
+                {user ? t("Кабинетке өту", "Go to dashboard") : t("Кіру", "Sign in")}
               </LinkButton>
             </div>
           </Card>
           <DemoNotice>
-            Бұл беттегі индикаторлар мен критерийлер — демо. Нақты өлшеу әдістемесін ғылыми
-            жетекші бекітуі қажет.
+            {t("Бұл беттегі индикаторлар мен критерийлер — демо. Нақты өлшеу әдістемесін ғылыми жетекші бекітуі қажет.", "The indicators and criteria on this page are examples. The final assessment methodology requires academic approval.")}
           </DemoNotice>
         </aside>
       </div>
@@ -830,78 +829,89 @@ export function StemDetailPage() {
 }
 
 export function ProjectsPage() {
-  useTitle("STEM жобалары");
+  const t = useText();
+  const { language } = usePreferences();
+  useTitle(t("STEM жобалары", "STEM projects"));
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("order");
+  const [page, setPage] = useState(1);
   const query = useDebouncedValue(search.trim(), 300);
   const projects = useQuery({
-    queryKey: ["public", "projects", query],
+    queryKey: ["public", "projects", query, sort, page],
     queryFn: () =>
       http.get<Page<ProjectCard>>(
-        `/projects?page_size=20${query ? `&q=${encodeURIComponent(query)}` : ""}`,
+        `/projects?page=${page}&page_size=12&sort=${sort}${query ? `&q=${encodeURIComponent(query)}` : ""}`,
       ),
   });
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <PageHeader
-        eyebrow="3-қадам · STEM жобалары"
-        title="STEM жобалары"
+        eyebrow={t("3-қадам · STEM жобалары", "Step 3 · STEM projects")}
+        title={t("STEM жобалары", "STEM projects")}
         description={
           <>
-            Жоба — білімді практикада қолдану. Әр жобада мәселе, мақсат, қадамдар, құралдар
-            және бағалау критерийлері көрсетіледі. Толық орындауға кіру қажет; жобаны мұғалім
-            сыныпқа тағайындайды.
+            {t("Жоба — білімді практикада қолдану. Әр жобада мәселе, мақсат, қадамдар, құралдар және бағалау критерийлері көрсетіледі. Толық орындауға кіру қажет; жобаны мұғалім сыныпқа тағайындайды.", "Apply your knowledge through projects with a problem, goal, steps, tools and assessment criteria. Sign in to submit assigned work.")}
           </>
         }
       />
-      <div className="mb-6 max-w-md">
+      <div className="mb-6 flex max-w-2xl flex-wrap items-center gap-3">
         <label htmlFor="project-search" className="sr-only">
-          Жоба іздеу
+          {t("Жоба іздеу", "Search projects")}
         </label>
-        <div className="relative">
+        <div className="relative min-w-48 flex-1">
           <Search className="pointer-events-none absolute top-3 left-3 size-4 text-slate-400" aria-hidden />
           <TextInput
             id="project-search"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Жоба атауы немесе сипаттамасы..."
+            onChange={(event) => { setSearch(event.target.value); setPage(1); }}
+            placeholder={t("Жоба атауы немесе сипаттамасы...", "Project name or description...")}
             className="pl-9"
           />
         </div>
+        <Select value={sort} onChange={(event) => { setSort(event.target.value); setPage(1); }} aria-label={t("Сұрыптау", "Sort")} className="max-w-56">
+          <option value="order">{t("Реті бойынша", "Default order")}</option>
+          <option value="title">{t("Атауы бойынша", "Title")}</option>
+          <option value="date">{t("Жаңа материалдар алдымен", "Newest first")}</option>
+        </Select>
       </div>
       {projects.isLoading ? (
         <PageLoader />
       ) : projects.isError ? (
         <Alert tone="error">{errorMessage(projects.error)}</Alert>
       ) : (projects.data?.items.length ?? 0) === 0 ? (
-        <EmptyState title="Жобалар табылмады" />
+        <EmptyState title={t("Жобалар табылмады", "No projects found")} />
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {projects.data?.items.map((project) => (
             <ContentCard
               key={project.id}
               to={`/projects/${project.id}`}
-              title={project.title}
-              description={project.summary}
+              title={localizeProject(project, language).title}
+              image="/images/stem-project.png"
+              description={localizeProject(project, language).summary}
               icon={<Compass className="size-5" aria-hidden />}
               demo={project.is_demo}
               badges={
                 <>
-                  {project.algorithm ? <Badge tone="brand">{project.algorithm.title}</Badge> : null}
+                  {project.algorithm ? <Badge tone="brand">{localizeRefTitle(project.algorithm, language)}</Badge> : null}
                   {project.competencies.slice(0, 2).map((competency) => (
                     <Badge key={competency.id} tone="slate">
-                      {competency.title}
+                      {localizeRefTitle(competency, language)}
                     </Badge>
                   ))}
                 </>
               }
               footer={
                 <span className="inline-flex items-center gap-1">
-                  Жобаны ашу <ArrowRight className="size-3.5" aria-hidden />
+                  {t("Жобаны ашу", "Open project")} <ArrowRight className="size-3.5" aria-hidden />
                 </span>
               }
             />
           ))}
         </div>
+        <Pagination page={page} total={projects.data?.total ?? 0} pageSize={12} onPage={setPage} />
+        </>
       )}
       <div className="mt-10">
         <DemoNotice />
@@ -911,30 +921,32 @@ export function ProjectsPage() {
 }
 
 export function PublicProjectPage() {
+  const t = useText();
+  const { language } = usePreferences();
   const { id = "" } = useParams();
   const { user } = useAuth();
   const project = useQuery({
     queryKey: ["public", "project", id],
     queryFn: () => http.get<ProjectDetail>(`/projects/${id}`),
   });
-  useTitle(project.data?.title ?? "STEM жобасы");
+  useTitle(project.data ? localizeProject(project.data, language).title : t("STEM жобасы", "STEM project"));
 
   if (project.isLoading) return <PageLoader />;
   if (project.isError)
     return (
       <div className="mx-auto max-w-3xl px-4 py-16">
-        <Alert tone="error" title="Жоба ашылмады">
+        <Alert tone="error" title={t("Жоба ашылмады", "Could not open project")}>
           {errorMessage(project.error)}
         </Alert>
         <div className="mt-4">
           <LinkButton to="/projects" variant="secondary">
-            Жобаларға оралу
+            {t("Жобаларға оралу", "Back to projects")}
           </LinkButton>
         </div>
       </div>
     );
 
-  const data = project.data;
+  const data = project.data ? localizeProject(project.data, language) : undefined;
   if (!data) return null;
   const actionPath =
     user?.role === "student"
@@ -948,34 +960,34 @@ export function PublicProjectPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <Link to="/projects" className="text-sm font-semibold no-underline">
-        ← STEM жобалары
+        ← {t("STEM жобалары", "STEM projects")}
       </Link>
       <div className="mt-5 grid gap-8 lg:grid-cols-[1fr_21rem]">
         <article>
           <div className="flex flex-wrap gap-2">
-            <Badge tone="brand">STEM жобасы</Badge>
-            {data.is_demo ? <Badge tone="amber">Демо</Badge> : null}
-            {data.algorithm ? <Badge tone="slate">{data.algorithm.title}</Badge> : null}
+            <Badge tone="brand">{t("STEM жобасы", "STEM project")}</Badge>
+            {data.is_demo ? <Badge tone="amber">{t("Демо", "Demo")}</Badge> : null}
+            {data.algorithm ? <Badge tone="slate">{localizeRefTitle(data.algorithm, language)}</Badge> : null}
           </div>
           <h1 className="mt-3 text-4xl font-bold tracking-tight text-ink-950">{data.title}</h1>
           <p className="mt-4 text-base leading-7 text-slate-600">{data.summary}</p>
 
           <section className="mt-8 grid gap-4 sm:grid-cols-3">
             <Card className="bg-rose-50">
-              <p className="text-xs font-bold tracking-wide text-rose-800 uppercase">Мәселе</p>
+              <p className="text-xs font-bold tracking-wide text-rose-800 uppercase">{t("Мәселе", "Problem")}</p>
               <div className="mt-2 text-sm leading-6 text-rose-950">
                 <RichTextRenderer html={data.problem} />
               </div>
             </Card>
             <Card className="bg-brand-50">
-              <p className="text-xs font-bold tracking-wide text-brand-800 uppercase">Мақсат</p>
+              <p className="text-xs font-bold tracking-wide text-brand-800 uppercase">{t("Мақсат", "Goal")}</p>
               <div className="mt-2 text-sm leading-6 text-brand-950">
                 <RichTextRenderer html={data.goal} />
               </div>
             </Card>
             <Card className="bg-amber-50">
               <p className="text-xs font-bold tracking-wide text-amber-800 uppercase">
-                Күтілетін нәтиже
+                {t("Күтілетін нәтиже", "Expected result")}
               </p>
               <div className="mt-2 text-sm leading-6 text-amber-950">
                 <RichTextRenderer html={data.expected_result} />
@@ -988,7 +1000,7 @@ export function PublicProjectPage() {
           </section>
 
           <section className="mt-8">
-            <h2 className="text-xl font-bold text-ink-950">Орындау қадамдары</h2>
+            <h2 className="text-xl font-bold text-ink-950">{t("Орындау қадамдары", "Steps")}</h2>
             <ol className="mt-3 space-y-2">
               {(data.steps_json ?? []).map((step, index) => (
                 <li
@@ -1006,7 +1018,7 @@ export function PublicProjectPage() {
 
           <section className="mt-8 grid gap-6 sm:grid-cols-3">
             <div>
-              <h2 className="text-base font-bold text-ink-950">Материалдар</h2>
+              <h2 className="text-base font-bold text-ink-950">{t("Материалдар", "Materials")}</h2>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
                 {(data.materials_json ?? []).map((item, index) => (
                   <li key={`${item}-${index}`}>{item}</li>
@@ -1014,7 +1026,7 @@ export function PublicProjectPage() {
               </ul>
             </div>
             <div>
-              <h2 className="text-base font-bold text-ink-950">Құралдар</h2>
+              <h2 className="text-base font-bold text-ink-950">{t("Құралдар", "Tools")}</h2>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
                 {(data.tools_json ?? []).map((item, index) => (
                   <li key={`${item}-${index}`}>{item}</li>
@@ -1022,7 +1034,7 @@ export function PublicProjectPage() {
               </ul>
             </div>
             <div>
-              <h2 className="text-base font-bold text-ink-950">Бағалау критерийлері</h2>
+              <h2 className="text-base font-bold text-ink-950">{t("Бағалау критерийлері", "Assessment criteria")}</h2>
               <ul className="mt-2 space-y-1 text-sm text-slate-600">
                 {(data.rubric_json ?? []).map((item, index) => (
                   <li key={`${item.criterion}-${index}`} className="flex justify-between gap-2">
@@ -1042,24 +1054,23 @@ export function PublicProjectPage() {
         </article>
         <aside className="space-y-4">
           <Card>
-            <h2 className="text-sm font-bold text-ink-950">Жобаны орындау</h2>
+            <h2 className="text-sm font-bold text-ink-950">{t("Жобаны орындау", "Complete the project")}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Толық нұсқаулық, файлдар және нәтижені жіберу мүмкіндігі кабинетте қолжетімді.
-              Жобаны мұғалім сыныпқа тағайындайды.
+              {t("Толық нұсқаулық, файлдар және нәтижені жіберу мүмкіндігі кабинетте қолжетімді. Жобаны мұғалім сыныпқа тағайындайды.", "Full instructions, files, and submissions are available in your dashboard. Your teacher assigns projects to the class.")}
             </p>
             <div className="mt-4">
               <LinkButton to={actionPath} className="w-full" size="sm">
-                {user ? "Кабинетте ашу" : "Кіріп, орындауды бастау"}
+                {user ? t("Кабинетте ашу", "Open in dashboard") : t("Кіріп, орындауды бастау", "Sign in to start")}
               </LinkButton>
             </div>
           </Card>
           <Card>
-            <h2 className="text-sm font-bold text-ink-950">Дамитын құзыреттіліктер</h2>
+            <h2 className="text-sm font-bold text-ink-950">{t("Дамитын құзыреттіліктер", "Competencies")}</h2>
             <ul className="mt-3 flex flex-wrap gap-1.5">
               {data.competencies.map((competency) => (
                 <li key={competency.id}>
                   <Link to={`/stem/${competency.slug}`} className="no-underline">
-                    <Badge tone="brand">{competency.title}</Badge>
+                    <Badge tone="brand">{localizeRefTitle(competency, language)}</Badge>
                   </Link>
                 </li>
               ))}
@@ -1067,13 +1078,13 @@ export function PublicProjectPage() {
           </Card>
           <Card className="bg-slate-50">
             <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
-              Жарияланған
+              {t("Жарияланған", "Published")}
             </p>
             <p className="mt-1 text-sm font-semibold text-slate-700">
               {formatDate(null)}
             </p>
             <p className="mt-2 text-xs leading-5 text-slate-500">
-              Жоба нәтижесін мұғалім рубрика бойынша бағалайды.
+              {t("Жоба нәтижесін мұғалім рубрика бойынша бағалайды.", "The teacher assesses the project using the rubric.")}
             </p>
           </Card>
           <DemoNotice />

@@ -62,7 +62,7 @@ def visible_resources(
 
 
 def ref(obj) -> dict:
-    return {"id": obj.id, "title": obj.title, "slug": obj.slug}
+    return {"id": obj.id, "title": obj.title, "slug": obj.slug, "translation_en": {"title": (getattr(obj, "translation_en", None) or {}).get("title", "")}}
 
 
 def algorithm_brief(algorithm: Algorithm | None) -> dict | None:
@@ -99,6 +99,7 @@ def lesson_card(lesson: Lesson, completed: bool = False) -> dict:
         "slug": lesson.slug,
         "title": lesson.title,
         "summary": lesson.summary,
+        "translation_en": {key: value for key, value in (lesson.translation_en or {}).items() if key in {"title", "summary"}},
         "order_no": lesson.order_no,
         "duration_min": lesson.duration_min,
         "is_demo": lesson.is_demo,
@@ -119,6 +120,7 @@ def lesson_detail(db: Session, lesson: Lesson, user: User | None) -> dict:
         ).scalar_one_or_none() is not None
     return {
         **lesson_card(lesson, completed),
+        "translation_en": lesson.translation_en or {},
         "body": lesson.body,
         "goal": lesson.goal,
         "reflection": lesson.reflection,
@@ -133,6 +135,7 @@ def task_card(task: Task, user: User | None) -> dict:
         "id": task.id,
         "slug": task.slug,
         "title": task.title,
+        "translation_en": {key: value for key, value in (task.translation_en or {}).items() if key == "title"},
         "type": task.type,
         "difficulty": task.difficulty,
         "max_score": task.max_score,
@@ -155,12 +158,14 @@ def task_detail(db: Session, task: Task, user: User | None, reveal_answers: bool
             {
                 "id": option.id,
                 "label": option.label,
+                "label_en": option.label_en,
                 "order_no": option.order_no,
                 "is_correct": option.is_correct if privileged else None,
             }
         )
     return {
         **task_card(task, user),
+        "translation_en": task.translation_en or {},
         "instructions": task.instructions,
         "body": task.body,
         "rubric_json": task.rubric_json,
@@ -177,6 +182,7 @@ def project_card(project: Project) -> dict:
         "slug": project.slug,
         "title": project.title,
         "summary": project.summary,
+        "translation_en": {key: value for key, value in (project.translation_en or {}).items() if key in {"title", "summary"}},
         "is_demo": project.is_demo,
         "status": project.status,
         "algorithm": algorithm_brief(project.algorithm),
@@ -187,6 +193,7 @@ def project_card(project: Project) -> dict:
 def project_detail(db: Session, project: Project, user: User | None) -> dict:
     return {
         **project_card(project),
+        "translation_en": project.translation_en or {},
         "problem": project.problem,
         "goal": project.goal,
         "body": project.body,
@@ -207,6 +214,7 @@ def algorithm_card(algorithm: Algorithm) -> dict:
         "title": algorithm.title,
         "title_en": algorithm.title_en,
         "summary": algorithm.summary,
+        "translation_en": {key: value for key, value in (algorithm.translation_en or {}).items() if key == "summary"},
         "cover_image": algorithm.cover_image,
         "is_demo": algorithm.is_demo,
         "status": algorithm.status,
@@ -232,6 +240,7 @@ def algorithm_detail(db: Session, algorithm: Algorithm, user: User | None) -> di
                 competencies[link.competency.id] = ref(link.competency)
     return {
         **algorithm_card(algorithm),
+        "translation_en": algorithm.translation_en or {},
         "body": algorithm.body,
         "competencies": sorted(competencies.values(), key=lambda item: item["title"]),
         "lessons": [
@@ -250,6 +259,7 @@ def competency_card(competency: Competency) -> dict:
         "slug": competency.slug,
         "title": competency.title,
         "description": competency.description,
+        "translation_en": competency.translation_en or {},
         "is_demo": competency.is_demo,
         "status": competency.status,
     }
@@ -265,8 +275,7 @@ def competency_detail(db: Session, competency: Competency, user: User | None) ->
         lesson = link.lesson
         if lesson and lesson.status == "published":
             lessons[lesson.id] = {
-                "id": lesson.id, "title": lesson.title, "slug": lesson.slug,
-                "order_no": lesson.order_no,
+                **ref(lesson), "order_no": lesson.order_no,
             }
             if lesson.algorithm and lesson.algorithm.status == "published":
                 algorithms[lesson.algorithm.id] = {
@@ -313,6 +322,7 @@ def matrix_rows(db: Session, user: User | None) -> list[dict]:
             {
                 "algorithm_id": algorithm.id,
                 "algorithm_title": algorithm.title,
+                "algorithm_title_en": algorithm.title_en,
                 "algorithm_slug": algorithm.slug,
                 "competencies": sorted(competencies.values(), key=lambda item: item["title"]),
                 "lesson_count": len(lessons),
@@ -346,6 +356,7 @@ def assessment_card(db: Session, assessment: Assessment, student_id: uuid.UUID |
     return {
         "id": assessment.id,
         "name": assessment.name,
+        "translation_en": assessment.translation_en or {},
         "slug": assessment.slug,
         "kind": assessment.kind,
         "version": assessment.version,
@@ -371,6 +382,7 @@ def question_student(question, reveal: bool = False) -> dict:
             {
                 "id": option_id,
                 "label": option.get("label", ""),
+                "label_en": option.get("label_en", ""),
                 "order_no": index,
                 "is_correct": bool(option.get("is_correct")) if reveal else None,
             }
@@ -379,8 +391,11 @@ def question_student(question, reveal: bool = False) -> dict:
         "id": question.id,
         "type": question.type,
         "body": question.body,
+        "body_en": question.body_en,
         "points": question.points,
         "competency_id": question.competency_id,
+        "competency_ids": question.competency_ids_json or ([str(question.competency_id)] if question.competency_id else []),
+        "competency_weights": question.competency_weights_json or {},
         "competency_title": question.competency.title if question.competency else None,
         "order_no": question.order_no,
         "options": options,
@@ -402,6 +417,7 @@ def attempt_out(
             {
                 "competency_id": score.competency_id,
                 "title": score.competency.title if score.competency else "",
+                "title_en": (score.competency.translation_en or {}).get("title") if score.competency else None,
                 "slug": score.competency.slug if score.competency else "",
                 "earned": score.earned,
                 "maximum": score.maximum,

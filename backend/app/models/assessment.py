@@ -34,6 +34,7 @@ class Assessment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     status: Mapped[str] = mapped_column(
         String(20), default=ContentStatus.draft.value, nullable=False, index=True
     )
+    translation_en: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     scoring_config_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     attempts_limit: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     show_correct_answers: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -59,9 +60,12 @@ class AssessmentQuestion(UUIDPrimaryKeyMixin, Base):
     )
     type: Mapped[str] = mapped_column(String(30), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
+    body_en: Mapped[str] = mapped_column(Text, default="", nullable=False)
     competency_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("competencies.id", ondelete="SET NULL"), index=True
     )
+    competency_ids_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    competency_weights_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     points: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     options_json: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     order_no: Mapped[int] = mapped_column(Integer, default=1, nullable=False)

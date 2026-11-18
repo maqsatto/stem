@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { Badge, Card } from "@/shared/ui";
+import { useText } from "@/shared/preferences";
 
 export function ContentCard({
   to,
@@ -11,6 +12,7 @@ export function ContentCard({
   badges,
   footer,
   icon,
+  image,
   demo = false,
 }: {
   to?: string;
@@ -20,10 +22,13 @@ export function ContentCard({
   badges?: ReactNode;
   footer?: ReactNode;
   icon?: ReactNode;
+  image?: string;
   demo?: boolean;
 }) {
+  const t = useText();
   const content = (
     <Card className="flex h-full flex-col border-transparent bg-transparent transition hover:border-[#e3e3e3] hover:bg-white hover:shadow-[4px_8px_20px_rgba(130,130,130,0.16)] max-sm:border-[#e3e3e3] max-sm:bg-white">
+      {image ? <img src={image} alt="" loading="lazy" className="mb-4 aspect-[16/9] w-full rounded-md object-cover" /> : null}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           {icon ? (
@@ -36,7 +41,7 @@ export function ContentCard({
             {meta ? <div className="mt-1 text-xs text-slate-500">{meta}</div> : null}
           </div>
         </div>
-        {demo ? <Badge tone="amber">Демо</Badge> : null}
+        {demo ? <Badge tone="amber">{t("Демо", "Demo")}</Badge> : null}
       </div>
       {description ? (
         <div className="mt-3 line-clamp-4 text-sm leading-6 text-slate-600">{description}</div>

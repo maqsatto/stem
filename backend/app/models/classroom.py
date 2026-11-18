@@ -84,6 +84,13 @@ class Assignment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
 
 
+class AssignmentProgress(Base):
+    __tablename__ = "assignment_progress"
+    assignment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("assignments.id", ondelete="CASCADE"), primary_key=True)
+    student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class Submission(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "submissions"
     __table_args__ = (UniqueConstraint("assignment_id", "student_id", name="uq_submission_student"),)

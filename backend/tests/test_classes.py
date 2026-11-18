@@ -44,6 +44,27 @@ def test_invalid_join_code(client, db):
     assert response.json()["code"] == "invalid_code"
 
 
+def test_start_assignment_tracks_progress_without_creating_submission(client, db):
+    teacher = create_user(db, role="teacher")
+    student = create_user(db, role="student")
+    outsider = create_user(db, role="student")
+    classroom = create_classroom(db, teacher, [student])
+    task = create_task(db, task_type="open_text")
+    assignment = create_assignment(db, classroom, "task", task.id)
+    url = f"/api/v1/assignments/{assignment.id}/start"
+    assert client.post(url, headers=auth(login(client, outsider.email))).status_code == 404
+    headers = auth(login(client, student.email))
+    assert client.post(url, headers=headers).status_code == 200
+    assert client.post(url, headers=headers).status_code == 200
+    assert client.get(f"/api/v1/assignments/{assignment.id}", headers=headers).json()["student_status"] == "in_progress"
+    roster = client.get(f"/api/v1/assignments/{assignment.id}/submissions", headers=auth(login(client, teacher.email))).json()
+    assert roster["students"][0]["status"] == "in_progress"
+    assert roster["submitted_count"] == 0
+    assert client.post(f"/api/v1/assignments/{assignment.id}/submissions", json={"text": "Done"}, headers=headers).status_code == 200
+    assert client.get(f"/api/v1/assignments/{assignment.id}", headers=headers).json()["student_status"] == "submitted"
+    assert client.post(url, headers=headers).json()["status"] == "submitted"
+
+
 def test_object_level_classroom_isolation(client, db):
     teacher_a = create_user(db, role="teacher")
     teacher_b = create_user(db, role="teacher")
@@ -254,6 +275,20 @@ def test_open_submission_and_teacher_review(client, db):
     assert resubmitted.json()["attempts_count"] == 2
 
 
+def test_assignment_roster_includes_students_who_have_not_submitted(client, db):
+    teacher = create_user(db, role="teacher")
+    student = create_user(db, role="student")
+    waiting = create_user(db, role="student")
+    classroom = create_classroom(db, teacher, [student, waiting])
+    task = create_task(db, task_type="open_text")
+    assignment = create_assignment(db, classroom, "task", task.id)
+    client.post(f"/api/v1/assignments/{assignment.id}/submissions", json={"text": "Answer"}, headers=auth(login(client, student.email)))
+    result = client.get(f"/api/v1/assignments/{assignment.id}/submissions", headers=auth(login(client, teacher.email)))
+    assert result.status_code == 200
+    statuses = {row["student_id"]: row["status"] for row in result.json()["students"]}
+    assert statuses == {str(student.id): "submitted", str(waiting.id): "not_started"}
+
+
 def test_empty_submission_is_rejected(client, db):
     teacher = create_user(db, role="teacher")
     student = create_user(db, role="student")
@@ -267,3 +302,16 @@ def test_empty_submission_is_rejected(client, db):
     )
     assert response.status_code == 422
     assert response.json()["code"] == "empty_submission"
+
+
+def test_assignment_exposes_translated_title_without_replacing_original(client, db):
+    teacher = create_user(db, role="teacher")
+    classroom = create_classroom(db, teacher)
+    task = create_task(db, task_type="open_text")
+    task.translation_en = {"title": "English task"}
+    db.commit()
+    assignment = create_assignment(db, classroom, "task", task.id)
+    response = client.get(f"/api/v1/assignments/{assignment.id}", headers=auth(login(client, teacher.email)))
+    assert response.status_code == 200
+    assert response.json()["content_title"] == task.title
+    assert response.json()["content_title_en"] == "English task"

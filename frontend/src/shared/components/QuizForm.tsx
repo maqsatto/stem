@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { AssessmentQuestion } from "@/shared/types";
 import { Alert, Button, Card } from "@/shared/ui";
 import { RichTextRenderer } from "@/shared/components/RichTextRenderer";
+import { useText } from "@/shared/preferences";
 
 export interface QuizAnswer {
   question_id: string;
@@ -17,7 +18,7 @@ export function QuizForm({
   onSubmit,
   onSave,
   submitting = false,
-  submitLabel = "Жауаптарды жіберу",
+  submitLabel,
   disabled = false,
 }: {
   questions: AssessmentQuestion[];
@@ -28,6 +29,7 @@ export function QuizForm({
   submitLabel?: string;
   disabled?: boolean;
 }) {
+  const t = useText();
   const [values, setValues] = useState<QuizInitialValues>(() => initialValues ?? {});
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -94,7 +96,7 @@ export function QuizForm({
       await onSave(collectAnswers());
       setSaved(true);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Жауаптарды сақтау мүмкін болмады.");
+      setError(saveError instanceof Error ? saveError.message : t("Жауаптарды сақтау мүмкін болмады.", "Could not save answers."));
     } finally {
       setSaving(false);
     }
@@ -109,14 +111,14 @@ export function QuizForm({
       return !value?.selected.length;
     });
     if (missing.length > 0) {
-      setError("Барлық сұраққа жауап беріңіз. Жауапсыз қалған сұрақтар бар.");
+      setError(t("Барлық сұраққа жауап беріңіз. Жауапсыз қалған сұрақтар бар.", "Answer every question before submitting."));
       return;
     }
     try {
       await onSubmit(collectAnswers());
     } catch (submitError) {
       setError(
-        submitError instanceof Error ? submitError.message : "Жауаптарды жіберу мүмкін болмады.",
+        submitError instanceof Error ? submitError.message : t("Жауаптарды жіберу мүмкін болмады.", "Could not submit answers."),
       );
     }
   }
@@ -135,7 +137,7 @@ export function QuizForm({
                     {index + 1}
                   </span>
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase">
-                    {question.points} балл
+                    {question.points} {t("балл", "points")}
                   </span>
                   {question.competency_title ? (
                     <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-800">
@@ -146,10 +148,10 @@ export function QuizForm({
                 <RichTextRenderer html={question.body} className="mt-3 text-sm" />
                 <span className="mt-1 block text-xs text-slate-500">
                   {question.type === "single_choice"
-                    ? "Бір дұрыс жауапты таңдаңыз."
+                    ? t("Бір дұрыс жауапты таңдаңыз.", "Select one answer.")
                     : question.type === "multiple_choice"
-                      ? "Бірнеше дұрыс жауапты таңдауға болады."
-                      : "Жауабыңызды мәтін түрінде жазыңыз."}
+                      ? t("Бірнеше дұрыс жауапты таңдауға болады.", "Select all correct answers.")
+                      : t("Жауабыңызды мәтін түрінде жазыңыз.", "Write your answer.")}
                 </span>
               </legend>
               {isOpen ? (
@@ -158,7 +160,7 @@ export function QuizForm({
                   value={values[question.id]?.text ?? ""}
                   onChange={(event) => setText(question.id, event.target.value)}
                   disabled={disabled || saving || submitting}
-                  aria-label={`${index + 1}-сұраққа жауап`}
+                  aria-label={t(`${index + 1}-сұраққа жауап`, `Answer to question ${index + 1}`)}
                 />
               ) : (
                 <div className="mt-4 space-y-2">
@@ -193,15 +195,15 @@ export function QuizForm({
         );
       })}
       {error ? <Alert tone="error">{error}</Alert> : null}
-      {saved ? <p role="status" className="text-sm text-emerald-700">Жауаптар сақталды.</p> : null}
+      {saved ? <p role="status" className="text-sm text-emerald-700">{t("Жауаптар сақталды.", "Answers saved.")}</p> : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-slate-500">
-          Жауап берілді: <strong>{answeredCount}</strong> / {questions.length}
+          {t("Жауап берілді", "Answered")}: <strong>{answeredCount}</strong> / {questions.length}
         </p>
         <div className="flex flex-wrap gap-2">
-          {onSave ? <Button type="button" variant="secondary" loading={saving} disabled={disabled || submitting} onClick={() => void saveDraft()}>Жауаптарды сақтау</Button> : null}
+          {onSave ? <Button type="button" variant="secondary" loading={saving} disabled={disabled || submitting} onClick={() => void saveDraft()}>{t("Жауаптарды сақтау", "Save answers")}</Button> : null}
           <Button type="submit" loading={submitting} disabled={disabled || saving}>
-            {submitLabel}
+            {submitLabel ?? t("Жауаптарды жіберу", "Submit answers")}
           </Button>
         </div>
       </div>

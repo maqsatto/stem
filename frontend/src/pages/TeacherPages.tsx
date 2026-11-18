@@ -17,7 +17,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { errorMessage, http } from "@/shared/api";
-import { CatalogFilters, LessonFilter } from "@/shared/components/CatalogFilters";
+import { CatalogFilters, ClassFilter, LessonFilter } from "@/shared/components/CatalogFilters";
 import { AssignToClass, ResourceList } from "@/shared/components/ContentBits";
 import { ContentCard } from "@/shared/components/ContentCard";
 import { RichTextRenderer } from "@/shared/components/RichTextRenderer";
@@ -28,6 +28,8 @@ import {
   taskTypeLabels,
 } from "@/shared/format";
 import { useDebouncedValue, useTitle } from "@/shared/hooks";
+import { useLabel, usePreferences, useText } from "@/shared/preferences";
+import { localizeLesson, localizeProject, localizeRefTitle, localizeTask } from "@/shared/localizeContent";
 import type {
   Assignment,
   Classroom,
@@ -62,10 +64,12 @@ interface TeacherCompetency {
   description: string;
   indicators_json: string[];
   criteria_json: Record<string, string>;
+  translation_en?: { title?: string; description?: string; indicators_json?: string[]; criteria_json?: Record<string, string> };
 }
 
 export function TeacherDashboardPage() {
-  useTitle("Мұғалім кабинеті");
+  const t = useText();
+  useTitle(t("Мұғалім кабинеті", "Teacher dashboard"));
   const dashboard = useQuery({
     queryKey: ["teacher-dashboard"],
     queryFn: () => http.get<TeacherDashboard>("/teacher/dashboard"),
@@ -82,18 +86,18 @@ export function TeacherDashboardPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Мұғалім кабинеті"
-        title="Сыныптар мен жұмыстар шолуы"
-        description="Күнделікті жұмыстың қысқаша көрінісі: сыныптар, тағайындаулар және тексеруді күтіп тұрған жұмыстар."
+        eyebrow={t("Мұғалім кабинеті", "Teacher dashboard")}
+        title={t("Сыныптар мен жұмыстар шолуы", "Classes and work overview")}
+        description={t("Күнделікті жұмыстың қысқаша көрінісі: сыныптар, тағайындаулар және тексеруді күтіп тұрған жұмыстар.", "An overview of classes, assignments and work awaiting review.")}
         actions={
           <>
             <LinkButton to="/teacher/assignments" variant="secondary">
               <CalendarClock className="size-4" aria-hidden />
-              Тағайындау
+              {t("Тағайындау", "Assign work")}
             </LinkButton>
             <LinkButton to="/teacher/reviews">
               <CheckCircle2 className="size-4" aria-hidden />
-              Тексерулер
+              {t("Тексерулер", "Reviews")}
             </LinkButton>
           </>
         }
@@ -105,25 +109,25 @@ export function TeacherDashboardPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Сыныптар" value={dashboard.data?.classrooms ?? 0} />
-            <StatCard label="Оқушылар" value={dashboard.data?.students ?? 0} tone="blue" />
-            <StatCard label="Тағайындаулар" value={dashboard.data?.assignments ?? 0} tone="amber" />
+            <StatCard label={t("Сыныптар", "Classes")} value={dashboard.data?.classrooms ?? 0} />
+            <StatCard label={t("Оқушылар", "Students")} value={dashboard.data?.students ?? 0} tone="blue" />
+            <StatCard label={t("Тағайындаулар", "Assignments")} value={dashboard.data?.assignments ?? 0} tone="amber" />
             <StatCard
-              label="Тексеруді күтіп тұр"
+              label={t("Тексеруді күтіп тұр", "Awaiting review")}
               value={dashboard.data?.pending_reviews ?? 0}
               tone="rose"
-              hint="Ашық/практикалық жұмыстар"
+              hint={t("Ашық/практикалық жұмыстар", "Open and practical work")}
             />
           </div>
           <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
             <Card>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-bold text-ink-950">Менің сыныптарым</h2>
-                  <p className="mt-1 text-sm text-slate-500">Кіру кодын оқушыларға беріңіз.</p>
+                  <h2 className="text-lg font-bold text-ink-950">{t("Менің сыныптарым", "My classes")}</h2>
+                  <p className="mt-1 text-sm text-slate-500">{t("Кіру кодын оқушыларға беріңіз.", "Share the join code with students.")}</p>
                 </div>
                 <Link to="/teacher/classes" className="text-xs font-semibold no-underline">
-                  Басқару
+                  {t("Басқару", "Manage")}
                 </Link>
               </div>
               {(classes.data?.items.length ?? 0) === 0 ? (
@@ -161,7 +165,7 @@ export function TeacherDashboardPage() {
               )}
             </Card>
             <Card>
-              <h2 className="text-lg font-bold text-ink-950">Соңғы тағайындаулар</h2>
+              <h2 className="text-lg font-bold text-ink-950">{t("Соңғы тағайындаулар", "Recent assignments")}</h2>
               {assignments.isLoading ? (
                 <PageLoader />
               ) : (assignments.data?.items.length ?? 0) === 0 ? (
@@ -211,7 +215,10 @@ export function TeacherDashboardPage() {
 }
 
 export function TeacherMethodologyPage() {
-  useTitle("Әдістеме");
+  const t = useText();
+  const label = useLabel();
+  const { language } = usePreferences();
+  useTitle(t("Әдістеме", "Methodology"));
   const matrix = useQuery({
     queryKey: ["matrix"],
     queryFn: () => http.get<MatrixRow[]>("/matrix"),
@@ -223,36 +230,33 @@ export function TeacherMethodologyPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Әдістеме"
-        title="ML ↔ STEM байланыс матрицасы"
-        description="Әр ML алгоритмі нақты STEM құзыреттіліктерімен байланысады. Матрица сабақ, тапсырма және жоба байланыстарынан автоматты құрылады — бұл мазмұндық байланыс, бағалау нәтижесі емес."
+        eyebrow={t("Әдістеме", "Methodology")}
+        title={t("ML ↔ STEM байланыс матрицасы", "ML ↔ STEM matrix")}
+        description={t("Әр ML алгоритмі нақты STEM құзыреттіліктерімен байланысады. Матрица сабақ, тапсырма және жоба байланыстарынан автоматты құрылады — бұл мазмұндық байланыс, бағалау нәтижесі емес.", "The matrix connects ML algorithms to STEM competencies through lessons, tasks, and projects. It shows content links, not assessment results.")}
       />
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="bg-brand-50">
-          <p className="text-xs font-bold tracking-wide text-brand-800 uppercase">1. Мазмұн</p>
+          <p className="text-xs font-bold tracking-wide text-brand-800 uppercase">{t("1. Мазмұн", "1. Content")}</p>
           <p className="mt-2 text-sm leading-6 text-brand-950">
-            Алгоритм → сабақ → тапсырма → жоба. Әр элемент бір немесе бірнеше STEM
-            құзыреттілігіне байланысады.
+            {t("Алгоритм → сабақ → тапсырма → жоба. Әр элемент бір немесе бірнеше STEM құзыреттілігіне байланысады.", "Algorithm → lesson → task → project. Each item connects to one or more STEM competencies.") }
           </p>
         </Card>
         <Card className="bg-blue-50">
-          <p className="text-xs font-bold tracking-wide text-blue-800 uppercase">2. Өлшеу</p>
+          <p className="text-xs font-bold tracking-wide text-blue-800 uppercase">{t("2. Өлшеу", "2. Measurement")}</p>
           <p className="mt-2 text-sm leading-6 text-blue-950">
-            Pre/post диагностика құзыреттіліктер бойынша балл мен деңгейді береді. Өзгеріс
-            проценттік пунктпен көрсетіледі.
+            {t("Pre/post диагностика құзыреттіліктер бойынша балл мен деңгейді береді. Өзгеріс проценттік пунктпен көрсетіледі.", "Pre/post assessments provide scores and levels by competency. Changes are shown in percentage points.") }
           </p>
         </Card>
         <Card className="bg-amber-50">
-          <p className="text-xs font-bold tracking-wide text-amber-800 uppercase">3. Түсіндіру</p>
+          <p className="text-xs font-bold tracking-wide text-amber-800 uppercase">{t("3. Түсіндіру", "3. Interpretation")}</p>
           <p className="mt-2 text-sm leading-6 text-amber-950">
-            Нәтиже — өлшенген динамика. Ол әдістеменің себептік әсерін дәлелдемейді; толық
-            зерттеу дизайны бөлек талап етіледі.
+            {t("Нәтиже — өлшенген динамика. Ол әдістеменің себептік әсерін дәлелдемейді; толық зерттеу дизайны бөлек талап етіледі.", "The result is measured progress; it does not prove causal impact. A full research design is required separately.") }
           </p>
         </Card>
       </div>
 
       <Card className="mt-6">
-        <h2 className="text-lg font-bold text-ink-950">ML алгоритмдерінің STEM-байланысы</h2>
+        <h2 className="text-lg font-bold text-ink-950">{t("ML алгоритмдерінің STEM-байланысы", "ML and STEM connections")}</h2>
         {matrix.isLoading ? (
           <PageLoader />
         ) : matrix.isError ? (
@@ -262,11 +266,11 @@ export function TeacherMethodologyPage() {
             <table className="w-full min-w-[42rem] text-left text-sm">
               <thead className="bg-slate-50 text-xs font-bold text-slate-600 uppercase">
                 <tr>
-                  <th className="px-3 py-2">ML алгоритмі</th>
-                  <th className="px-3 py-2">STEM құзыреттіліктері</th>
-                  <th className="px-3 py-2 text-right">Сабақ</th>
-                  <th className="px-3 py-2 text-right">Тапсырма</th>
-                  <th className="px-3 py-2 text-right">Жоба</th>
+                  <th className="px-3 py-2">{t("ML алгоритмі", "ML algorithm")}</th>
+                  <th className="px-3 py-2">{t("STEM құзыреттіліктері", "STEM competencies")}</th>
+                  <th className="px-3 py-2 text-right">{t("Сабақ", "Lessons")}</th>
+                  <th className="px-3 py-2 text-right">{t("Тапсырма", "Tasks")}</th>
+                  <th className="px-3 py-2 text-right">{t("Жоба", "Projects")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -274,14 +278,14 @@ export function TeacherMethodologyPage() {
                   <tr key={row.algorithm_id} className="border-t border-slate-100 align-top">
                     <td className="px-3 py-3 font-semibold text-ink-950">
                       <Link to={`/ml/${row.algorithm_slug}`} className="no-underline">
-                        {row.algorithm_title}
+                        {language === "en" ? row.algorithm_title_en || row.algorithm_title : row.algorithm_title}
                       </Link>
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex flex-wrap gap-1.5">
                         {row.competencies.map((competency) => (
                           <Badge key={competency.id} tone="brand">
-                            {competency.title}
+                            {localizeRefTitle(competency, language)}
                           </Badge>
                         ))}
                       </div>
@@ -298,7 +302,7 @@ export function TeacherMethodologyPage() {
       </Card>
 
       <div className="mt-6">
-        <h2 className="text-xl font-bold text-ink-950">STEM құзыреттіліктерінің сипаттамасы</h2>
+        <h2 className="text-xl font-bold text-ink-950">{t("STEM құзыреттіліктерінің сипаттамасы", "STEM competency descriptions")}</h2>
         {competencies.isLoading ? (
           <PageLoader />
         ) : competencies.isError ? (
@@ -308,26 +312,26 @@ export function TeacherMethodologyPage() {
             {competencies.data?.map((competency) => (
               <Card key={competency.id}>
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-base font-bold text-ink-950">{competency.title}</h3>
+                  <h3 className="text-base font-bold text-ink-950">{language === "en" ? competency.translation_en?.title || competency.title : competency.title}</h3>
                   <Link to={`/stem/${competency.slug}`} className="text-xs font-semibold no-underline">
-                    Публикация
+                    {t("Публикация", "Published page")}
                   </Link>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{competency.description}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{language === "en" ? competency.translation_en?.description || competency.description : competency.description}</p>
                 <p className="mt-3 text-xs font-bold tracking-wide text-slate-500 uppercase">
-                  Индикаторлар
+                  {t("Индикаторлар", "Indicators")}
                 </p>
                 <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                  {(competency.indicators_json ?? []).map((indicator, index) => (
+                  {(language === "en" && competency.translation_en?.indicators_json?.length ? competency.translation_en.indicators_json : competency.indicators_json ?? []).map((indicator, index) => (
                     <li key={`${indicator}-${index}`}>{indicator}</li>
                   ))}
                 </ul>
-                {Object.keys(competency.criteria_json ?? {}).length > 0 ? (
+                {Object.keys(language === "en" && Object.keys(competency.translation_en?.criteria_json ?? {}).length ? competency.translation_en!.criteria_json! : competency.criteria_json ?? {}).length > 0 ? (
                   <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                    {Object.entries(competency.criteria_json).map(([level, text]) => (
+                    {Object.entries(language === "en" && Object.keys(competency.translation_en?.criteria_json ?? {}).length ? competency.translation_en!.criteria_json! : competency.criteria_json).map(([level, text]) => (
                       <div key={level} className="rounded-lg bg-slate-50 p-2.5">
                         <p className="text-[10px] font-bold tracking-wide text-brand-700 uppercase">
-                          {levelLabels[level] ?? level}
+                          {label(levelLabels[level] ?? level)}
                         </p>
                         <p className="mt-1 text-xs leading-5 text-slate-600">{text}</p>
                       </div>
@@ -341,8 +345,7 @@ export function TeacherMethodologyPage() {
       </div>
       <div className="mt-6">
         <DemoNotice>
-          Матрица байланыстары CMS-тегі мазмұнға тәуелді. Құзыреттілік критерийлерінің
-          ғылыми мазмұнын тапсырыс беруші бекітеді.
+          {t("Матрица байланыстары CMS-тегі мазмұнға тәуелді. Құзыреттілік критерийлерінің ғылыми мазмұнын тапсырыс беруші бекітеді.", "Matrix links depend on CMS content. The customer approves the final competency criteria.") }
         </DemoNotice>
       </div>
     </div>
@@ -350,7 +353,9 @@ export function TeacherMethodologyPage() {
 }
 
 export function TeacherCurriculumPage() {
-  useTitle("Оқу бағдарламасы");
+  const t = useText();
+  const { language } = usePreferences();
+  useTitle(t("Оқу бағдарламасы", "Curriculum"));
   const lessons = useQuery({
     queryKey: ["teacher-lessons", "curriculum"],
     queryFn: () => http.get<Page<LessonCard>>("/lessons?page_size=100"),
@@ -361,7 +366,7 @@ export function TeacherCurriculumPage() {
   });
   const grouped = new Map<string, LessonCard[]>();
   for (const lesson of lessons.data?.items ?? []) {
-    const key = lesson.algorithm?.title ?? "Жалпы модуль";
+    const key = lesson.algorithm ? localizeRefTitle(lesson.algorithm, language) : t("Жалпы модуль", "General module");
     grouped.set(key, [...(grouped.get(key) ?? []), lesson]);
   }
   return (
@@ -369,8 +374,8 @@ export function TeacherCurriculumPage() {
       <PageHeader
         eyebrow="Оқу бағдарламасы"
         title="Сабақтар картасы"
-        description="Алты сабақ ML негіздерінен STEM жобасына дейін реттелген. Әр сабақта мақсат, теория, практика, ресурстар және рефлексия бар."
-        actions={<LinkButton to="/teacher/methodology" variant="secondary">Әдістемелік матрица</LinkButton>}
+        description={t("Алты сабақ ML негіздерінен STEM жобасына дейін реттелген. Әр сабақта мақсат, теория, практика, ресурстар және рефлексия бар.", "Six lessons progress from ML basics to STEM projects. Each includes goals, theory, practice, resources, and reflection.")}
+        actions={<LinkButton to="/teacher/methodology" variant="secondary">{t("Әдістемелік матрица", "Methodology matrix")}</LinkButton>}
       />
       {lessons.isLoading ? (
         <PageLoader />
@@ -395,15 +400,15 @@ export function TeacherCurriculumPage() {
                       </span>
                       <span className="min-w-0">
                         <span className="block text-sm font-semibold text-ink-950">
-                          {lesson.title}
+                          {localizeLesson(lesson, language).title}
                         </span>
                         <span className="mt-0.5 block text-xs leading-5 text-slate-500">
-                          {lesson.summary}
+                          {localizeLesson(lesson, language).summary}
                         </span>
                         <span className="mt-1 flex flex-wrap gap-1">
                           {lesson.competencies.map((competency) => (
                             <Badge key={competency.id} tone="slate">
-                              {competency.title}
+                              {localizeRefTitle(competency, language)}
                             </Badge>
                           ))}
                         </span>
@@ -415,13 +420,13 @@ export function TeacherCurriculumPage() {
           ))}
           {matrix.data?.length ? (
             <Card className="bg-slate-50">
-              <h2 className="text-lg font-bold text-ink-950">Бағдарламаның ML ↔ STEM қамтуы</h2>
+              <h2 className="text-lg font-bold text-ink-950">{t("Бағдарламаның ML ↔ STEM қамтуы", "ML ↔ STEM coverage")}</h2>
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
                 {matrix.data.map((row) => (
                   <div key={row.algorithm_id} className="rounded-xl border border-slate-200 bg-white p-3">
-                    <p className="text-sm font-semibold text-ink-950">{row.algorithm_title}</p>
+                    <p className="text-sm font-semibold text-ink-950">{language === "en" ? row.algorithm_title_en || row.algorithm_title : row.algorithm_title}</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      {row.lesson_count} сабақ · {row.task_count} тапсырма · {row.project_count} жоба
+                      {row.lesson_count} {t("сабақ", "lessons")} · {row.task_count} {t("тапсырма", "tasks")} · {row.project_count} {t("жоба", "projects")}
                     </p>
                   </div>
                 ))}
@@ -435,16 +440,18 @@ export function TeacherCurriculumPage() {
 }
 
 export function TeacherLessonsPage() {
+  const { language } = usePreferences();
   useTitle("Сабақтар");
   const [search, setSearch] = useState("");
   const [algorithmId, setAlgorithmId] = useState("");
   const [competencyId, setCompetencyId] = useState("");
+  const [sort, setSort] = useState("order");
   const query = useDebouncedValue(search.trim(), 300);
   const [page, setPage] = useState(1);
   const lessons = useQuery({
-    queryKey: ["teacher-lessons", query, algorithmId, competencyId, page],
+    queryKey: ["teacher-lessons", query, algorithmId, competencyId, sort, page],
     queryFn: () => {
-      const params = new URLSearchParams({ page: String(page), page_size: "12" });
+      const params = new URLSearchParams({ page: String(page), page_size: "12", sort });
       if (query) params.set("q", query);
       if (algorithmId) params.set("algorithm_id", algorithmId);
       if (competencyId) params.set("competency_id", competencyId);
@@ -475,6 +482,7 @@ export function TeacherLessonsPage() {
           setPage(1);
         }}
         searchLabel="Сабақ іздеу"
+        sort={sort} onSort={(value) => { setSort(value); setPage(1); }}
       />
       {lessons.isLoading ? (
         <PageLoader />
@@ -487,9 +495,10 @@ export function TeacherLessonsPage() {
               <ContentCard
                 key={lesson.id}
                 to={`/teacher/lessons/${lesson.id}`}
-                title={lesson.title}
+                title={localizeLesson(lesson, language).title}
+                image="/images/stem-classroom.png"
                 meta={`${lesson.order_no}-сабақ · ${lesson.duration_min} мин`}
-                description={lesson.summary}
+                description={localizeLesson(lesson, language).summary}
                 icon={<BookOpen className="size-5" aria-hidden />}
                 demo={lesson.is_demo}
                 badges={lesson.competencies.map((competency) => (
@@ -508,12 +517,13 @@ export function TeacherLessonsPage() {
 }
 
 export function TeacherLessonDetailPage() {
+  const { language } = usePreferences();
   const { id = "" } = useParams();
   const lesson = useQuery({
     queryKey: ["teacher-lesson", id],
     queryFn: () => http.get<LessonDetail>(`/lessons/${id}`),
   });
-  useTitle(lesson.data?.title ?? "Сабақ");
+  useTitle(lesson.data ? localizeLesson(lesson.data, language).title : "Сабақ");
   if (lesson.isLoading) return <PageLoader />;
   if (lesson.isError)
     return (
@@ -521,7 +531,7 @@ export function TeacherLessonDetailPage() {
         {errorMessage(lesson.error)}
       </Alert>
     );
-  const data = lesson.data;
+  const data = lesson.data ? localizeLesson(lesson.data, language) : undefined;
   if (!data) return null;
   const teacherResources = data.resources.filter((resource) => resource.audience === "teacher");
   return (
@@ -625,24 +635,29 @@ export function TeacherLessonDetailPage() {
 }
 
 export function TeacherTasksPage() {
-  useTitle("Тапсырмалар кітапханасы");
+  const { language } = usePreferences();
+  const t = useText();
+  const label = useLabel();
+  useTitle(t("Тапсырмалар кітапханасы", "Task library"));
   const [search, setSearch] = useState("");
   const [algorithmId, setAlgorithmId] = useState("");
   const [competencyId, setCompetencyId] = useState("");
   const [lessonId, setLessonId] = useState("");
+  const [classroomId, setClassroomId] = useState("");
   const [type, setType] = useState("");
   const [difficulty, setDifficulty] = useState("");
   const [sort, setSort] = useState("order");
   const [page, setPage] = useState(1);
   const query = useDebouncedValue(search.trim(), 300);
   const tasks = useQuery({
-    queryKey: ["teacher-tasks", query, algorithmId, competencyId, lessonId, type, difficulty, sort, page],
+    queryKey: ["teacher-tasks", query, algorithmId, competencyId, lessonId, classroomId, type, difficulty, sort, page],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), page_size: "12", sort });
       if (query) params.set("q", query);
       if (algorithmId) params.set("algorithm_id", algorithmId);
       if (competencyId) params.set("competency_id", competencyId);
       if (lessonId) params.set("lesson_id", lessonId);
+      if (classroomId) params.set("classroom_id", classroomId);
       if (type) params.set("type", type);
       if (difficulty) params.set("difficulty", difficulty);
       return http.get<Page<TaskCard>>(`/tasks?${params.toString()}`);
@@ -651,9 +666,9 @@ export function TeacherTasksPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Кітапхана"
-        title="Тапсырмалар"
-        description="Жабық тесттердің дұрыс жауаптары мен ашық жұмыстардың рубрикалары осында қолжетімді. Тапсырманы сыныпқа тағайындау үшін оны ашыңыз."
+        eyebrow={t("Кітапхана", "Library")}
+        title={t("Тапсырмалар", "Tasks")}
+        description={t("Жабық тесттердің дұрыс жауаптары мен ашық жұмыстардың рубрикалары осында қолжетімді. Тапсырманы сыныпқа тағайындау үшін оны ашыңыз.", "Browse answer keys and grading rubrics. Open a task to assign it to a class.")}
       />
       <CatalogFilters
         search={search}
@@ -662,34 +677,35 @@ export function TeacherTasksPage() {
         onAlgorithmId={(value) => { setAlgorithmId(value); setPage(1); }}
         competencyId={competencyId}
         onCompetencyId={(value) => { setCompetencyId(value); setPage(1); }}
-        searchLabel="Тапсырма іздеу"
+        searchLabel={t("Тапсырма іздеу", "Search tasks")}
       >
         <LessonFilter value={lessonId} onChange={(value) => { setLessonId(value); setPage(1); }} />
-        <Select value={type} onChange={(event) => { setType(event.target.value); setPage(1); }} aria-label="Түрі">
-          <option value="">Барлық түрлер</option>
+        <ClassFilter value={classroomId} onChange={(value) => { setClassroomId(value); setPage(1); }} />
+        <Select value={type} onChange={(event) => { setType(event.target.value); setPage(1); }} aria-label={t("Түрі", "Type")}>
+          <option value="">{t("Барлық түрлер", "All types")}</option>
           {Object.entries(taskTypeLabels).map(([value, label]) => (
             <option key={value} value={value}>
-              {label}
+              {t(label, ({single_choice: "Single choice", multiple_choice: "Multiple choice", open_text: "Open response", file_upload: "File upload", link: "Link"} as Record<string, string>)[value] ?? label)}
             </option>
           ))}
         </Select>
         <Select
           value={difficulty}
           onChange={(event) => { setDifficulty(event.target.value); setPage(1); }}
-          aria-label="Қиындығы"
+          aria-label={t("Қиындығы", "Difficulty")}
         >
-          <option value="">Барлық деңгейлер</option>
+          <option value="">{t("Барлық деңгейлер", "All levels")}</option>
           {Object.entries(difficultyLabels).map(([value, label]) => (
             <option key={value} value={value}>
-              {label}
+              {t(label, ({easy: "Easy", medium: "Medium", hard: "Hard"} as Record<string, string>)[value] ?? label)}
             </option>
           ))}
         </Select>
-        <Select value={sort} onChange={(event) => { setSort(event.target.value); setPage(1); }} aria-label="Сұрыптау">
-          <option value="order">Реті бойынша</option>
-          <option value="difficulty">Қиындығы бойынша</option>
-          <option value="date">Жаңа материалдар алдымен</option>
-          <option value="title">Атауы бойынша</option>
+        <Select value={sort} onChange={(event) => { setSort(event.target.value); setPage(1); }} aria-label={t("Сұрыптау", "Sort")}>
+          <option value="order">{t("Реті бойынша", "Default order")}</option>
+          <option value="difficulty">{t("Қиындығы бойынша", "Difficulty")}</option>
+          <option value="date">{t("Жаңа материалдар алдымен", "Newest first")}</option>
+          <option value="title">{t("Атауы бойынша", "Title")}</option>
         </Select>
       </CatalogFilters>
       {tasks.isLoading ? (
@@ -697,7 +713,7 @@ export function TeacherTasksPage() {
       ) : tasks.isError ? (
         <Alert tone="error">{errorMessage(tasks.error)}</Alert>
       ) : (tasks.data?.items.length ?? 0) === 0 ? (
-        <EmptyState title="Тапсырмалар табылмады" />
+        <EmptyState title={t("Тапсырмалар табылмады", "No tasks found")} />
       ) : (
         <>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -705,19 +721,19 @@ export function TeacherTasksPage() {
             <ContentCard
               key={task.id}
               to={`/teacher/tasks/${task.id}`}
-              title={task.title}
-              meta={`${taskTypeLabels[task.type] ?? task.type} · ${
-                difficultyLabels[task.difficulty] ?? task.difficulty
+              title={localizeTask(task, language).title}
+              meta={`${label(taskTypeLabels[task.type] ?? task.type)} · ${
+                label(difficultyLabels[task.difficulty] ?? task.difficulty)
               }`}
               icon={<ClipboardList className="size-5" aria-hidden />}
               demo={task.is_demo}
               badges={
                 <>
-                  <Badge tone="slate">{task.max_score} балл</Badge>
-                  {task.answer_key_available ? <Badge tone="green">Жауап кілті</Badge> : null}
+                  <Badge tone="slate">{task.max_score} {t("балл", "points")}</Badge>
+                  {task.answer_key_available ? <Badge tone="green">{t("Жауап кілті", "Answer key")}</Badge> : null}
                   {task.competencies.slice(0, 2).map((competency) => (
                     <Badge key={competency.id} tone="brand">
-                      {competency.title}
+                      {localizeRefTitle(competency, language)}
                     </Badge>
                   ))}
                 </>
@@ -733,32 +749,35 @@ export function TeacherTasksPage() {
 }
 
 export function TeacherTaskDetailPage() {
+  const { language } = usePreferences();
+  const t = useText();
+  const label = useLabel();
   const { id = "" } = useParams();
   const task = useQuery({
     queryKey: ["teacher-task", id],
     queryFn: () => http.get<TaskDetail>(`/tasks/${id}`),
   });
-  useTitle(task.data?.title ?? "Тапсырма");
+  useTitle(task.data ? localizeTask(task.data, language).title : t("Тапсырма", "Task"));
   if (task.isLoading) return <PageLoader />;
   if (task.isError)
     return (
-      <Alert tone="error" title="Тапсырма ашылмады">
+      <Alert tone="error" title={t("Тапсырма ашылмады", "Could not open task")}>
         {errorMessage(task.error)}
       </Alert>
     );
-  const data = task.data;
+  const data = task.data ? localizeTask(task.data, language) : undefined;
   if (!data) return null;
   return (
     <div className="grid gap-8 xl:grid-cols-[1fr_21rem]">
       <article>
         <Link to="/teacher/tasks" className="inline-flex items-center gap-1 text-sm font-semibold no-underline">
-          <ArrowLeft className="size-4" aria-hidden /> Тапсырмалар
+          <ArrowLeft className="size-4" aria-hidden /> {t("Тапсырмалар", "Tasks")}
         </Link>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Badge tone="brand">{taskTypeLabels[data.type] ?? data.type}</Badge>
-          <Badge tone="slate">{difficultyLabels[data.difficulty] ?? data.difficulty}</Badge>
-          <Badge tone="amber">{data.max_score} балл</Badge>
-          {data.answer_key_available ? <Badge tone="green">Жауап кілті қолжетімді</Badge> : null}
+          <Badge tone="brand">{label(taskTypeLabels[data.type] ?? data.type)}</Badge>
+          <Badge tone="slate">{label(difficultyLabels[data.difficulty] ?? data.difficulty)}</Badge>
+          <Badge tone="amber">{data.max_score} {t("балл", "points")}</Badge>
+          {data.answer_key_available ? <Badge tone="green">{t("Жауап кілті қолжетімді", "Answer key available")}</Badge> : null}
         </div>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink-950">{data.title}</h1>
         <div className="mt-4">
@@ -772,9 +791,9 @@ export function TeacherTaskDetailPage() {
 
         {data.options.length > 0 ? (
           <section className="mt-6">
-            <h2 className="text-xl font-bold text-ink-950">Жауап нұсқалары</h2>
+            <h2 className="text-xl font-bold text-ink-950">{t("Жауап нұсқалары", "Answer options")}</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Жасыл белгі — дұрыс жауап. Бұл ақпарат оқушыға көрсетілмейді.
+              {t("Жасыл белгі — дұрыс жауап. Бұл ақпарат оқушыға көрсетілмейді.", "A green badge marks a correct answer. Students cannot see this information.")}
             </p>
             <ul className="mt-3 space-y-2">
               {data.options.map((option) => (
@@ -787,7 +806,7 @@ export function TeacherTaskDetailPage() {
                   }`}
                 >
                   <span>{option.label}</span>
-                  {option.is_correct ? <Badge tone="green">Дұрыс</Badge> : null}
+                  {option.is_correct ? <Badge tone="green">{t("Дұрыс", "Correct")}</Badge> : null}
                 </li>
               ))}
             </ul>
@@ -796,13 +815,13 @@ export function TeacherTaskDetailPage() {
 
         {data.rubric_json.length > 0 ? (
           <section className="mt-6">
-            <h2 className="text-xl font-bold text-ink-950">Бағалау рубрикасы</h2>
+            <h2 className="text-xl font-bold text-ink-950">{t("Бағалау рубрикасы", "Assessment rubric")}</h2>
             <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-bold text-slate-600 uppercase">
                   <tr>
-                    <th className="px-3 py-2">Критерий</th>
-                    <th className="px-3 py-2 text-right">Балл</th>
+                    <th className="px-3 py-2">{t("Критерий", "Criterion")}</th>
+                    <th className="px-3 py-2 text-right">{t("Балл", "Points")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -825,34 +844,34 @@ export function TeacherTaskDetailPage() {
       </article>
       <aside className="space-y-4">
         <Card>
-          <h2 className="text-sm font-bold text-ink-950">Сыныпқа тағайындау</h2>
+          <h2 className="text-sm font-bold text-ink-950">{t("Сыныпқа тағайындау", "Assign to class")}</h2>
           <div className="mt-3">
-            <AssignToClass contentType="task" contentId={data.id} label="Тапсырманы тағайындау" />
+            <AssignToClass contentType="task" contentId={data.id} label={t("Тапсырманы тағайындау", "Assign task")} />
           </div>
         </Card>
         <Card>
-          <h2 className="text-sm font-bold text-ink-950">Параметрлер</h2>
+          <h2 className="text-sm font-bold text-ink-950">{t("Параметрлер", "Settings")}</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between gap-2">
-              <dt className="text-slate-500">Талпыныс лимиті</dt>
+              <dt className="text-slate-500">{t("Талпыныс лимиті", "Attempt limit")}</dt>
               <dd className="font-semibold">{data.attempts_limit}</dd>
             </div>
             <div className="flex justify-between gap-2">
-              <dt className="text-slate-500">Дұрыс жауапты көрсету</dt>
-              <dd className="font-semibold">{data.show_correct_answers ? "Иә" : "Жоқ"}</dd>
+              <dt className="text-slate-500">{t("Дұрыс жауапты көрсету", "Show correct answers")}</dt>
+              <dd className="font-semibold">{data.show_correct_answers ? t("Иә", "Yes") : t("Жоқ", "No")}</dd>
             </div>
             <div className="flex justify-between gap-2">
-              <dt className="text-slate-500">Максимум балл</dt>
+              <dt className="text-slate-500">{t("Максимум балл", "Maximum score")}</dt>
               <dd className="font-semibold">{data.max_score}</dd>
             </div>
           </dl>
         </Card>
         <Card>
-          <h2 className="text-sm font-bold text-ink-950">STEM құзыреттіліктері</h2>
+          <h2 className="text-sm font-bold text-ink-950">{t("STEM құзыреттіліктері", "STEM competencies")}</h2>
           <ul className="mt-3 flex flex-wrap gap-1.5">
             {data.competencies.map((competency) => (
               <li key={competency.id}>
-                <Badge tone="brand">{competency.title}</Badge>
+                <Badge tone="brand">{localizeRefTitle(competency, language)}</Badge>
               </li>
             ))}
           </ul>
@@ -864,16 +883,19 @@ export function TeacherTaskDetailPage() {
 }
 
 export function TeacherProjectsPage() {
-  useTitle("STEM жобалары");
+  const { language } = usePreferences();
+  const t = useText();
+  useTitle(t("STEM жобалары", "STEM projects"));
   const [search, setSearch] = useState("");
   const [algorithmId, setAlgorithmId] = useState("");
   const [competencyId, setCompetencyId] = useState("");
+  const [sort, setSort] = useState("order");
   const [page, setPage] = useState(1);
   const query = useDebouncedValue(search.trim(), 300);
   const projects = useQuery({
-    queryKey: ["teacher-projects", query, algorithmId, competencyId, page],
+    queryKey: ["teacher-projects", query, algorithmId, competencyId, sort, page],
     queryFn: () => {
-      const params = new URLSearchParams({ page: String(page), page_size: "12" });
+      const params = new URLSearchParams({ page: String(page), page_size: "12", sort });
       if (query) params.set("q", query);
       if (algorithmId) params.set("algorithm_id", algorithmId);
       if (competencyId) params.set("competency_id", competencyId);
@@ -883,9 +905,9 @@ export function TeacherProjectsPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Кітапхана"
-        title="STEM жобалары"
-        description="Жобалардың толық сипаттамасы, рубрикалары және оқушыларға арналған нұсқаулықтары. Жобаны сыныпқа тағайындап, нәтижені рубрика бойынша бағалаңыз."
+        eyebrow={t("Кітапхана", "Library")}
+        title={t("STEM жобалары", "STEM projects")}
+        description={t("Жобалардың толық сипаттамасы, рубрикалары және оқушыларға арналған нұсқаулықтары. Жобаны сыныпқа тағайындап, нәтижені рубрика бойынша бағалаңыз.", "Browse project details, rubrics, and student instructions. Assign projects to a class and assess their results.")}
       />
       <CatalogFilters
         search={search}
@@ -894,14 +916,15 @@ export function TeacherProjectsPage() {
         onAlgorithmId={(value) => { setAlgorithmId(value); setPage(1); }}
         competencyId={competencyId}
         onCompetencyId={(value) => { setCompetencyId(value); setPage(1); }}
-        searchLabel="Жоба іздеу"
+        searchLabel={t("Жоба іздеу", "Search projects")}
+        sort={sort} onSort={(value) => { setSort(value); setPage(1); }}
       />
       {projects.isLoading ? (
         <PageLoader />
       ) : projects.isError ? (
         <Alert tone="error">{errorMessage(projects.error)}</Alert>
       ) : (projects.data?.items.length ?? 0) === 0 ? (
-        <EmptyState title="Жобалар табылмады" />
+        <EmptyState title={t("Жобалар табылмады", "No projects found")} />
       ) : (
         <>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -909,8 +932,9 @@ export function TeacherProjectsPage() {
             <ContentCard
               key={project.id}
               to={`/teacher/projects/${project.id}`}
-              title={project.title}
-              description={project.summary}
+              title={localizeProject(project, language).title}
+              image="/images/stem-project.png"
+              description={localizeProject(project, language).summary}
               icon={<FolderKanban className="size-5" aria-hidden />}
               demo={project.is_demo}
               badges={project.competencies.slice(0, 3).map((competency) => (
@@ -929,50 +953,52 @@ export function TeacherProjectsPage() {
 }
 
 export function TeacherProjectDetailPage() {
+  const { language } = usePreferences();
+  const t = useText();
   const { id = "" } = useParams();
   const project = useQuery({
     queryKey: ["teacher-project", id],
     queryFn: () => http.get<ProjectDetail>(`/projects/${id}`),
   });
-  useTitle(project.data?.title ?? "STEM жобасы");
+  useTitle(project.data ? localizeProject(project.data, language).title : t("STEM жобасы", "STEM project"));
   if (project.isLoading) return <PageLoader />;
   if (project.isError)
     return (
-      <Alert tone="error" title="Жоба ашылмады">
+      <Alert tone="error" title={t("Жоба ашылмады", "Could not open project")}>
         {errorMessage(project.error)}
       </Alert>
     );
-  const data = project.data;
+  const data = project.data ? localizeProject(project.data, language) : undefined;
   if (!data) return null;
   return (
     <div className="grid gap-8 xl:grid-cols-[1fr_21rem]">
       <article>
         <Link to="/teacher/projects" className="inline-flex items-center gap-1 text-sm font-semibold no-underline">
-          <ArrowLeft className="size-4" aria-hidden /> Жобалар
+          <ArrowLeft className="size-4" aria-hidden /> {t("Жобалар", "Projects")}
         </Link>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Badge tone="brand">STEM жобасы</Badge>
-          {data.algorithm ? <Badge tone="slate">{data.algorithm.title}</Badge> : null}
-          {data.is_demo ? <Badge tone="amber">Демо</Badge> : null}
+          <Badge tone="brand">{t("STEM жобасы", "STEM project")}</Badge>
+          {data.algorithm ? <Badge tone="slate">{localizeRefTitle(data.algorithm, language)}</Badge> : null}
+          {data.is_demo ? <Badge tone="amber">{t("Демо", "Demo")}</Badge> : null}
         </div>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-ink-950">{data.title}</h1>
         <p className="mt-3 text-base leading-7 text-slate-600">{data.summary}</p>
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <Card className="bg-rose-50">
-            <p className="text-xs font-bold tracking-wide text-rose-800 uppercase">Мәселе</p>
+            <p className="text-xs font-bold tracking-wide text-rose-800 uppercase">{t("Мәселе", "Problem")}</p>
             <div className="mt-2 text-sm leading-6 text-rose-950">
               <RichTextRenderer html={data.problem} />
             </div>
           </Card>
           <Card className="bg-brand-50">
-            <p className="text-xs font-bold tracking-wide text-brand-800 uppercase">Мақсат</p>
+            <p className="text-xs font-bold tracking-wide text-brand-800 uppercase">{t("Мақсат", "Goal")}</p>
             <div className="mt-2 text-sm leading-6 text-brand-950">
               <RichTextRenderer html={data.goal} />
             </div>
           </Card>
           <Card className="bg-amber-50">
             <p className="text-xs font-bold tracking-wide text-amber-800 uppercase">
-              Күтілетін нәтиже
+              {t("Күтілетін нәтиже", "Expected result")}
             </p>
             <div className="mt-2 text-sm leading-6 text-amber-950">
               <RichTextRenderer html={data.expected_result} />
@@ -983,7 +1009,7 @@ export function TeacherProjectDetailPage() {
           <RichTextRenderer html={data.body} />
         </div>
         <section className="mt-8">
-          <h2 className="text-xl font-bold text-ink-950">Қадамдар</h2>
+          <h2 className="text-xl font-bold text-ink-950">{t("Қадамдар", "Steps")}</h2>
           <ol className="mt-3 space-y-2">
             {(data.steps_json ?? []).map((step, index) => (
               <li key={`${step}-${index}`} className="flex gap-3 rounded-xl border border-slate-200 bg-white p-3.5 text-sm text-slate-700">
@@ -997,7 +1023,7 @@ export function TeacherProjectDetailPage() {
         </section>
         <section className="mt-8 grid gap-6 sm:grid-cols-3">
           <div>
-            <h2 className="text-base font-bold text-ink-950">Материалдар</h2>
+            <h2 className="text-base font-bold text-ink-950">{t("Материалдар", "Materials")}</h2>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
               {(data.materials_json ?? []).map((item, index) => (
                 <li key={`${item}-${index}`}>{item}</li>
@@ -1005,7 +1031,7 @@ export function TeacherProjectDetailPage() {
             </ul>
           </div>
           <div>
-            <h2 className="text-base font-bold text-ink-950">Құралдар</h2>
+            <h2 className="text-base font-bold text-ink-950">{t("Құралдар", "Tools")}</h2>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
               {(data.tools_json ?? []).map((item, index) => (
                 <li key={`${item}-${index}`}>{item}</li>
@@ -1013,7 +1039,7 @@ export function TeacherProjectDetailPage() {
             </ul>
           </div>
           <div>
-            <h2 className="text-base font-bold text-ink-950">Бағалау критерийлері</h2>
+            <h2 className="text-base font-bold text-ink-950">{t("Бағалау критерийлері", "Assessment criteria")}</h2>
             <ul className="mt-2 space-y-1 text-sm text-slate-600">
               {(data.rubric_json ?? []).map((item, index) => (
                 <li key={`${item.criterion}-${index}`} className="flex justify-between gap-2">
@@ -1032,18 +1058,18 @@ export function TeacherProjectDetailPage() {
       </article>
       <aside className="space-y-4">
         <Card>
-          <h2 className="text-sm font-bold text-ink-950">Сыныпқа тағайындау</h2>
+          <h2 className="text-sm font-bold text-ink-950">{t("Сыныпқа тағайындау", "Assign to class")}</h2>
           <div className="mt-3">
-            <AssignToClass contentType="project" contentId={data.id} label="Жобаны тағайындау" />
+            <AssignToClass contentType="project" contentId={data.id} label={t("Жобаны тағайындау", "Assign project")} />
           </div>
         </Card>
         <Card>
-          <h2 className="text-sm font-bold text-ink-950">Дамитын құзыреттіліктер</h2>
+          <h2 className="text-sm font-bold text-ink-950">{t("Дамитын құзыреттіліктер", "Competencies")}</h2>
           <ul className="mt-3 flex flex-wrap gap-1.5">
             {data.competencies.map((competency) => (
               <li key={competency.id}>
                 <Link to={`/stem/${competency.slug}`} className="no-underline">
-                  <Badge tone="brand">{competency.title}</Badge>
+                  <Badge tone="brand">{localizeRefTitle(competency, language)}</Badge>
                 </Link>
               </li>
             ))}

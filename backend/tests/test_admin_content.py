@@ -3,12 +3,49 @@
 from tests.helpers import (
     auth,
     create_algorithm,
+    create_competency,
     create_lesson,
     create_resource,
     create_task,
     create_user,
     login,
 )
+
+
+def test_admin_can_add_english_lesson_translation_without_overwriting_kazakh(client, db):
+    admin = create_user(db, role="admin")
+    headers = auth(login(client, admin.email))
+    response = client.post("/api/v1/admin/lessons", headers=headers, json={
+        "title": "Қазақша сабақ", "summary": "Қазақша", "body": "<p>Мәтін</p>",
+        "competency_ids": [str(create_competency(db).id)],
+        "translation_en": {"title": "English lesson", "summary": "English summary", "body": "<p>English</p><script>bad()</script>"},
+    })
+    assert response.status_code == 201
+    lesson_id = response.json()["id"]
+    assert response.json()["title"] == "Қазақша сабақ"
+    assert response.json()["translation_en"]["title"] == "English lesson"
+    assert "<script>" not in response.json()["translation_en"]["body"]
+    assert client.post(f"/api/v1/admin/lessons/{lesson_id}/publish", headers=headers).status_code == 200
+    public = client.get(f"/api/v1/lessons/{lesson_id}")
+    assert public.status_code == 200
+    assert public.json()["translation_en"]["summary"] == "English summary"
+    assert public.json()["summary"] == "Қазақша"
+
+
+def test_admin_can_add_english_algorithm_content(client, db):
+    headers = auth(login(client, create_user(db, role="admin").email))
+    created = client.post("/api/v1/admin/algorithms", headers=headers, json={
+        "title": "Жіктеу", "title_en": "Classification", "summary": "Сипаттама", "body": "<p>Мәтін</p>",
+        "translation_en": {"summary": "English summary", "body": "<p>English content</p><script>bad()</script>"},
+    })
+    assert created.status_code == 201
+    algorithm_id = created.json()["id"]
+    assert created.json()["translation_en"]["summary"] == "English summary"
+    assert "<script>" not in created.json()["translation_en"]["body"]
+    assert client.post(f"/api/v1/admin/algorithms/{algorithm_id}/publish", headers=headers).status_code == 200
+    public = client.get(f"/api/v1/algorithms/{created.json()['slug']}").json()
+    assert public["summary"] == "Сипаттама"
+    assert public["translation_en"]["body"].startswith("<p>English content</p>")
 
 
 def test_answer_key_and_resource_audience_leakage(client, db):
@@ -210,3 +247,90 @@ def test_student_cannot_use_admin_uploads(client, db):
         headers=headers,
     )
     assert response.status_code == 403
+
+
+def test_project_english_translation_preserves_original_and_sanitizes_html(client, db):
+    admin = create_user(db, role="admin")
+    headers = auth(login(client, admin.email))
+    response = client.post(
+        "/api/v1/admin/projects",
+        headers=headers,
+        json={"title": "Жоба", "translation_en": {"title": "Project", "body": "<p>English</p><script>alert(1)</script>", "steps_json": ["Build"]}},
+    )
+    assert response.status_code == 201, response.text
+    project = response.json()
+    assert project["title"] == "Жоба"
+    assert project["translation_en"]["title"] == "Project"
+    assert "<script" not in project["translation_en"]["body"]
+    assert project["translation_en"]["steps_json"] == ["Build"]
+    saved = client.get(f"/api/v1/admin/projects/{project['id']}", headers=headers).json()
+    assert saved["translation_en"] == project["translation_en"]
+
+
+def test_task_english_translation_keeps_answer_keys_private(client, db):
+    admin = create_user(db, role="admin")
+    student = create_user(db, role="student")
+    admin_headers = auth(login(client, admin.email))
+    student_headers = auth(login(client, student.email))
+    response = client.post("/api/v1/admin/tasks", headers=admin_headers, json={
+        "title": "Тапсырма", "type": "single_choice", "status": "published",
+        "body": "Сұрақ", "instructions": "Жауап", "competency_ids": [str(create_competency(db).id)], "translation_en": {"title": "Task", "body": "Question", "rubric_labels": ["Clarity"]},
+        "options": [{"label": "Иә", "label_en": "Yes", "is_correct": True}, {"label": "Жоқ", "label_en": "No"}],
+    })
+    assert response.status_code == 201, response.text
+    task = client.get(f"/api/v1/tasks/{response.json()['id']}", headers=student_headers).json()
+    assert task["translation_en"]["title"] == "Task"
+    assert task["translation_en"]["rubric_labels"] == ["Clarity"]
+    assert task["options"][0]["label_en"] == "Yes"
+    assert all(option.get("is_correct") is None for option in task["options"])
+
+
+def test_assessment_english_translation_is_copied_to_new_version_and_hides_answers(client, db):
+    admin_headers = auth(login(client, create_user(db, role="admin").email))
+    student_headers = auth(login(client, create_user(db, role="student").email))
+    competency = create_competency(db)
+    created = client.post("/api/v1/admin/assessments", headers=admin_headers, json={
+        "name": "Тест", "kind": "quiz", "description": "Сипаттама", "instructions": "Нұсқау",
+        "translation_en": {"name": "Test", "instructions": "Instructions"},
+        "questions": [{"type": "single_choice", "body": "Сұрақ", "body_en": "Question", "competency_id": str(competency.id),
+                       "options": [{"label": "Иә", "label_en": "Yes", "is_correct": True}, {"label": "Жоқ", "label_en": "No"}]}],
+    })
+    assert created.status_code == 201, created.text
+    assessment_id = created.json()["id"]
+    assert created.json()["translation_en"]["name"] == "Test"
+    assert client.post(f"/api/v1/admin/assessments/{assessment_id}/publish", headers=admin_headers).status_code == 200
+    detail = client.get(f"/api/v1/assessments/{assessment_id}", headers=student_headers).json()
+    assert detail["questions"][0]["body_en"] == "Question"
+    assert detail["questions"][0]["options"][0]["label_en"] == "Yes"
+    assert detail["questions"][0]["options"][0]["is_correct"] is None
+    clone = client.post(f"/api/v1/admin/assessments/{assessment_id}/new-version", headers=admin_headers).json()
+    assert clone["translation_en"]["name"] == "Test"
+    assert clone["questions"][0]["body_en"] == "Question"
+
+
+def test_editing_task_preserves_existing_option_ids(client, db):
+    headers = auth(login(client, create_user(db, role="admin").email))
+    created = client.post("/api/v1/admin/tasks", headers=headers, json={
+        "title": "Тапсырма", "type": "single_choice",
+        "options": [{"label": "Иә", "is_correct": True}, {"label": "Жоқ"}],
+    }).json()
+    options = created["options"]
+    updated = client.patch(f"/api/v1/admin/tasks/{created['id']}", headers=headers, json={
+        "options": [{"id": str(o["id"]), "label": o["label"], "label_en": "Translation", "is_correct": o["is_correct"], "order_no": o["order_no"]} for o in options]
+    })
+    assert updated.status_code == 200, updated.text
+    assert [o["id"] for o in updated.json()["options"]] == [o["id"] for o in options]
+
+
+def test_competency_english_fields_can_be_published(client, db):
+    headers = auth(login(client, create_user(db, role="admin").email))
+    created = client.post("/api/v1/admin/competencies", headers=headers, json={
+        "title": "Ойлау", "description": "Сипаттама", "indicators_json": ["Белгі"],
+        "translation_en": {"title": "Thinking", "description": "<p>Description</p><script>bad()</script>", "indicators_json": ["Indicator"]},
+    })
+    assert created.status_code == 201, created.text
+    assert created.json()["translation_en"]["title"] == "Thinking"
+    assert "<script" not in created.json()["translation_en"]["description"]
+    assert client.post(f"/api/v1/admin/competencies/{created.json()['id']}/publish", headers=headers).status_code == 200
+    detail = client.get(f"/api/v1/competencies/{created.json()['slug']}").json()
+    assert detail["translation_en"]["indicators_json"] == ["Indicator"]

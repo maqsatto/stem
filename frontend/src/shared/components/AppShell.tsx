@@ -1,10 +1,12 @@
-import { GraduationCap, LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 
 import { roleHome, useAuth } from "@/shared/auth";
 import { roleLabels } from "@/shared/format";
 import { buttonClass, DemoNotice } from "@/shared/ui";
+import { PreferenceControls } from "@/shared/components/PreferenceControls";
+import { useText } from "@/shared/preferences";
 
 const publicNav = [
   { to: "/ml", label: "ML" },
@@ -13,17 +15,21 @@ const publicNav = [
 ];
 
 export function Brand({ to = "/" }: { to?: string }) {
+  const t = useText();
   return (
     <Link to={to} className="group inline-flex items-center gap-2.5 no-underline">
-      <span className="flex size-10 items-center justify-center rounded-xl bg-brand-700 text-white shadow-sm transition-transform group-hover:-rotate-3">
-        <GraduationCap className="size-5" aria-hidden />
-      </span>
+      <img
+        src="/images/platform-logo.png"
+        alt=""
+        aria-hidden="true"
+        className="size-10 shrink-0 rounded-xl shadow-sm transition-transform group-hover:-rotate-3"
+      />
       <span className="leading-tight">
         <span className="block text-base font-extrabold tracking-tight text-ink-950">
           ML + STEM LAB
         </span>
         <span className="block text-[10px] font-semibold tracking-[0.16em] text-brand-700 uppercase">
-          білім беру платформасы
+          {t("білім беру платформасы", "learning platform")}
         </span>
       </span>
     </Link>
@@ -33,6 +39,7 @@ export function Brand({ to = "/" }: { to?: string }) {
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const t = useText();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -45,6 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="public-header sticky top-0 z-40 bg-[#222]">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <Brand />
+          <PreferenceControls darkBar />
           <div className="hidden items-center gap-2 md:flex">
             {user ? (
               <>
@@ -59,16 +67,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Link>
                 <button className={buttonClass("ghost", "sm")} onClick={() => void logout()}>
                   <LogOut className="size-4" aria-hidden />
-                  Шығу
+                  {t("Шығу", "Log out")}
                 </button>
               </>
             ) : (
               <>
                 <Link to="/login" className={buttonClass("ghost", "sm")}>
-                  Кіру
+                  {t("Кіру", "Log in")}
                 </Link>
                 <Link to="/register" className={buttonClass("primary", "sm")}>
-                  Тіркелу
+                  {t("Тіркелу", "Sign up")}
                 </Link>
               </>
             )}
@@ -88,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {publicNav.map((item) => (
               <NavLink key={item.to} to={item.to} className={({ isActive }) =>
                 `border-b-2 py-3 text-sm font-semibold no-underline transition-colors ${isActive ? "border-brand-600 text-brand-700" : "border-transparent text-slate-600 hover:text-brand-700"}`
-              }>{item.label}</NavLink>
+              }>{item.to === "/projects" ? t(item.label, "STEM projects") : item.label}</NavLink>
             ))}
           </nav>
         </div>
@@ -106,7 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     }`
                   }
                 >
-                  {item.label}
+                  {item.to === "/projects" ? t(item.label, "STEM projects") : item.label}
                 </NavLink>
               ))}
               <div className="my-2 border-t border-slate-200" />
@@ -126,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       void logout();
                     }}
                   >
-                    Шығу
+                    {t("Шығу", "Log out")}
                   </button>
                 </>
               ) : (
@@ -136,14 +144,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                     onClick={() => setOpen(false)}
                     className={buttonClass("secondary", "sm")}
                   >
-                    Кіру
+                    {t("Кіру", "Log in")}
                   </Link>
                   <Link
                     to="/register"
                     onClick={() => setOpen(false)}
                     className={buttonClass("primary", "sm")}
                   >
-                    Тіркелу
+                    {t("Тіркелу", "Sign up")}
                   </Link>
                 </div>
               )}
@@ -159,38 +167,35 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div>
             <p className="text-base font-bold text-white">ML + STEM LAB</p>
             <p className="mt-2 max-w-sm text-sm leading-6 text-slate-400">
-              Машиналық оқыту алгоритмдері арқылы STEM-құзыреттіліктерді дамытатын
-              біртұтас оқу платформасы.
+              {t("Машиналық оқыту алгоритмдері арқылы STEM-құзыреттіліктерді дамытатын біртұтас оқу платформасы.", "A learning platform for developing STEM skills with machine learning.")}
             </p>
           </div>
           <div>
             <p className="text-xs font-bold tracking-[0.18em] text-slate-500 uppercase">
-              Оқу бағыты
+              {t("Оқу бағыты", "Learning path")}
             </p>
             <ul className="mt-3 space-y-2 text-sm">
               <li>
                 <Link to="/ml" className="text-slate-300 no-underline hover:text-white">
-                  1. Машиналық оқыту
+                  {t("1. Машиналық оқыту", "1. Machine learning")}
                 </Link>
               </li>
               <li>
                 <Link to="/stem" className="text-slate-300 no-underline hover:text-white">
-                  2. STEM құзыреттіліктері
+                  {t("2. STEM құзыреттіліктері", "2. STEM competencies")}
                 </Link>
               </li>
               <li>
                 <Link to="/projects" className="text-slate-300 no-underline hover:text-white">
-                  3. STEM жобалары
+                  {t("3. STEM жобалары", "3. STEM projects")}
                 </Link>
               </li>
             </ul>
           </div>
           <div className="text-xs leading-5 text-slate-500">
-            <p className="font-semibold text-slate-300">Демо-нұсқа</p>
+            <p className="font-semibold text-slate-300">{t("Демо-нұсқа", "Demo version")}</p>
             <p className="mt-2">
-              Платформа MVP мақсатында жасалған. Оқу мазмұны мен диагностикалық
-              көрсеткіштер демонстрациялық; ғылыми-әдістемелік бекітуді тапсырыс беруші
-              жүргізеді.
+              {t("Платформа MVP мақсатында жасалған. Оқу мазмұны мен диагностикалық көрсеткіштер демонстрациялық; ғылыми-әдістемелік бекітуді тапсырыс беруші жүргізеді.", "This is a demo. Learning content and assessment indicators require educational approval.")}
             </p>
           </div>
         </div>

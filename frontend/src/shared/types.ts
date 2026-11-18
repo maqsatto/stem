@@ -40,6 +40,7 @@ export interface Page<T> {
 }
 
 export interface Ref {
+  translation_en?: { title?: string };
   id: string;
   title: string;
   slug: string;
@@ -80,6 +81,7 @@ export interface AlgorithmCard {
   title: string;
   title_en?: string | null;
   summary: string;
+  translation_en?: Partial<Record<"summary" | "body", string>>;
   cover_image?: string | null;
   is_demo: boolean;
   status: ContentStatus;
@@ -95,6 +97,7 @@ export interface AlgorithmDetail extends AlgorithmCard {
 }
 
 export interface CompetencyCard {
+  translation_en?: { title?: string; description?: string; indicators_json?: string[]; criteria_json?: Record<string, string> };
   id: string;
   slug: string;
   title: string;
@@ -117,6 +120,7 @@ export interface LessonCard {
   slug: string;
   title: string;
   summary: string;
+  translation_en?: Partial<Record<"title" | "summary" | "body" | "goal" | "reflection", string>>;
   order_no: number;
   duration_min: number;
   is_demo: boolean;
@@ -135,6 +139,7 @@ export interface LessonDetail extends LessonCard {
 }
 
 export interface TaskOption {
+  label_en?: string;
   id: string;
   label: string;
   order_no: number;
@@ -147,6 +152,7 @@ export interface RubricItem {
 }
 
 export interface TaskCard {
+  translation_en?: Partial<Record<"title" | "instructions" | "body", string>> & { rubric_labels?: string[] };
   id: string;
   slug: string;
   title: string;
@@ -172,6 +178,7 @@ export interface TaskDetail extends TaskCard {
 }
 
 export interface ProjectCard {
+  translation_en?: Partial<Record<"title" | "summary" | "problem" | "goal" | "body" | "expected_result", string> & Record<"steps_json" | "materials_json" | "tools_json" | "rubric_labels", string[]>>;
   id: string;
   slug: string;
   title: string;
@@ -196,6 +203,7 @@ export interface ProjectDetail extends ProjectCard {
 }
 
 export interface MatrixRow {
+  algorithm_title_en?: string | null;
   algorithm_id: string;
   algorithm_title: string;
   algorithm_slug: string;
@@ -237,6 +245,7 @@ export interface Assignment {
   content_type: "lesson" | "task" | "project" | "assessment";
   content_id: string;
   content_title: string;
+  content_title_en?: string | null;
   content_slug: string | null;
   due_at: string | null;
   status: string;
@@ -287,9 +296,11 @@ export interface SubmissionList {
   submitted_count: number;
   reviewed_count: number;
   items: Submission[];
+  students: { student_id: string; display_name: string; status: string; submission_id: string | null }[];
 }
 
 export interface AssessmentOption {
+  label_en?: string;
   id: string;
   label: string;
   order_no: number;
@@ -297,17 +308,21 @@ export interface AssessmentOption {
 }
 
 export interface AssessmentQuestion {
+  body_en?: string;
   id: string;
   type: "single_choice" | "multiple_choice" | "open_text";
   body: string;
   points: number;
   competency_id: string | null;
+  competency_ids?: string[];
+  competency_weights?: Record<string, number>;
   competency_title: string | null;
   order_no: number;
   options: AssessmentOption[];
 }
 
 export interface AssessmentCard {
+  translation_en?: Partial<Record<"name" | "description" | "instructions", string>>;
   id: string;
   name: string;
   slug: string;
@@ -333,6 +348,7 @@ export interface AssessmentDetail extends AssessmentCard {
 }
 
 export interface CompetencyScore {
+  title_en?: string | null;
   competency_id: string;
   title: string;
   slug: string;
@@ -371,6 +387,7 @@ export interface Attempt {
 }
 
 export interface ComparisonRow {
+  title_en?: string | null;
   competency_id: string;
   title: string;
   slug: string;
@@ -425,6 +442,7 @@ export interface ClassStudentResult {
 }
 
 export interface CompetencyAverage {
+  title_en?: string | null;
   competency_id: string;
   slug: string;
   title: string;

@@ -69,6 +69,8 @@ def correct_ids(assessment, index):
 
 def test_pre_post_scoring_comparison_and_answer_key_hiding(client, db):
     pre, post = build_pre_post(db)
+    pre.questions[0].competency.translation_en = {"title": "English competency"}
+    db.commit()
     student = create_user(db, role="student")
     other = create_user(db, role="student")
     headers = auth(login(client, student.email))
@@ -171,6 +173,8 @@ def test_pre_post_scoring_comparison_and_answer_key_hiding(client, db):
     assert comparison["post_overall"] == 100.0
     assert comparison["overall_delta_pp"] == 50.0
     assert len(comparison["rows"]) == 2
+    assert "English competency" in [row["title_en"] for row in comparison["rows"]]
+    assert "English competency" in [row["title_en"] for row in body["competency_summary"]]
     assert {row["delta_pp"] for row in comparison["rows"]} == {0.0, 100.0}
     assert any(item["delta_pp"] is not None for item in body["competency_summary"])
     assert len(body["competency_summary"]) == 2
@@ -210,6 +214,59 @@ def test_attempt_limit(client, db):
     assert exhausted.json()["code"] == "attempts_exhausted"
 
 
+def test_question_can_score_multiple_competencies(client, db):
+    first = create_competency(db, "First")
+    second = create_competency(db, "Second")
+    admin = create_user(db, role="admin")
+    student = create_user(db, role="student")
+    admin_headers = auth(login(client, admin.email))
+    created = client.post("/api/v1/admin/assessments", headers=admin_headers, json={
+        "name": "Multiple competencies", "kind": "pre", "methodology_key": "multi",
+        "questions": [{"type": "single_choice", "body": "Question", "points": 2,
+                       "competency_ids": [str(first.id), str(second.id)],
+                       "competency_weights": {str(first.id): 1, str(second.id): 3},
+                       "options": [{"label": "Yes", "is_correct": True}, {"label": "No", "is_correct": False}]}],
+    })
+    assert created.status_code == 201, created.text
+    assessment_id = created.json()["id"]
+    assert client.post(f"/api/v1/admin/assessments/{assessment_id}/publish", headers=admin_headers).status_code == 200
+    headers = auth(login(client, student.email))
+    detail = client.get(f"/api/v1/assessments/{assessment_id}", headers=headers).json()
+    question_obj = detail["questions"][0]
+    assert set(question_obj["competency_ids"]) == {str(first.id), str(second.id)}
+    attempt = client.post(f"/api/v1/assessments/{assessment_id}/attempts", headers=headers).json()
+    client.patch(f"/api/v1/attempts/{attempt['id']}/answers", headers=headers, json={"answers": [
+        {"question_id": question_obj["id"], "answer_json": {"selected_option_ids": [question_obj["options"][0]["id"]]}}
+    ]})
+    result = client.post(f"/api/v1/attempts/{attempt['id']}/submit", headers=headers).json()
+    assert result["total_score"] == 2
+    assert {score["competency_id"] for score in result["competency_scores"]} == {str(first.id), str(second.id)}
+    scores = {score["competency_id"]: score for score in result["competency_scores"]}
+    assert scores[str(first.id)]["maximum"] == 2
+    assert scores[str(second.id)]["maximum"] == 6
+    cloned = client.post(f"/api/v1/admin/assessments/{assessment_id}/new-version", headers=admin_headers)
+    assert cloned.status_code == 201
+    cloned_question = cloned.json()["questions"][0]
+    assert cloned_question["competency_weights"] == {str(first.id): 1, str(second.id): 3}
+
+
+def test_invalid_question_competency_weight_is_rejected(client, db):
+    comp = create_competency(db)
+    other = create_competency(db)
+    headers = auth(login(client, create_user(db, role="admin").email))
+    payload = {"name": "Invalid weights", "kind": "pre", "questions": [
+        {"type": "single_choice", "body": "Question", "competency_ids": [str(comp.id)],
+         "competency_weights": {str(other.id): 2}, "options": []}
+    ]}
+    result = client.post("/api/v1/admin/assessments", headers=headers, json=payload)
+    assert result.status_code == 422
+    assert result.json()["code"] == "invalid_competency_weight"
+    payload["questions"][0]["competency_weights"] = {str(comp.id): 0}
+    result = client.post("/api/v1/admin/assessments", headers=headers, json=payload)
+    assert result.status_code == 422
+    assert result.json()["code"] == "invalid_competency_weight"
+
+
 def test_in_progress_attempt_is_linked_to_authorized_assignment_and_counted(client, db):
     comp = create_competency(db)
     assessment = create_assessment(
@@ -240,7 +297,12 @@ def test_in_progress_attempt_is_linked_to_authorized_assignment_and_counted(clie
     assert resumed.status_code == 200
     assert resumed.json()["id"] == attempt_id
     assert client.get(f"/api/v1/attempts/{attempt_id}", headers=teacher_headers).status_code == 200
+    roster = client.get(f"/api/v1/assignments/{assignment.id}/submissions", headers=teacher_headers)
+    assert roster.json()["students"][0]["status"] == "in_progress"
     assert client.post(f"/api/v1/attempts/{attempt_id}/submit", headers=headers).status_code == 200
+    roster = client.get(f"/api/v1/assignments/{assignment.id}/submissions", headers=teacher_headers)
+    assert roster.json()["students"][0]["status"] == "submitted"
+    assert roster.json()["submitted_count"] == 1
     assignments = client.get("/api/v1/assignments", headers=teacher_headers).json()["items"]
     assert assignments[0]["submitted_count"] == 1
 
@@ -419,3 +481,19 @@ def test_class_report_does_not_include_attempts_from_another_class(client, db):
     assert response.json()["students"][0]["pre_overall"] is None
     assert response.json()["students"][0]["post_overall"] is None
     assert response.json()["students"][0]["tasks_submitted"] == 0
+
+
+def test_assessment_metadata_remains_editable_but_questions_stay_locked_after_attempt(client, db):
+    competency = create_competency(db)
+    assessment = create_assessment(db, questions=[question("single_choice", competency, correct=["Yes"], wrong=["No"])])
+    student_headers = auth(login(client, create_user(db, role="student").email))
+    admin_headers = auth(login(client, create_user(db, role="admin").email))
+    assert client.post(f"/api/v1/assessments/{assessment.id}/attempts", headers=student_headers).status_code == 200
+    original_question = str(assessment.questions[0].id)
+    metadata = client.patch(f"/api/v1/admin/assessments/{assessment.id}", headers=admin_headers, json={"description": "Updated", "translation_en": {"name": "Assessment"}})
+    assert metadata.status_code == 200
+    assert metadata.json()["questions"][0]["id"] == original_question
+    assert metadata.json()["translation_en"]["name"] == "Assessment"
+    changed = client.patch(f"/api/v1/admin/assessments/{assessment.id}", headers=admin_headers, json={"questions": []})
+    assert changed.status_code == 409
+    assert changed.json()["code"] == "assessment_has_attempts"

@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { useText } from "@/shared/preferences";
 import type { RubricItem } from "@/shared/types";
 import { Alert, Button, Field, TextArea, TextInput } from "@/shared/ui";
 
@@ -22,6 +23,7 @@ export function GradeRubric({
   }) => Promise<void> | void;
   submitting?: boolean;
 }) {
+  const t = useText();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [grade, setGrade] = useState(String(initialGrade ?? ""));
   const [feedback, setFeedback] = useState(initialFeedback ?? "");
@@ -44,11 +46,11 @@ export function GradeRubric({
     setError(null);
     const numeric = Number(grade);
     if (!Number.isFinite(numeric) || numeric < 0 || numeric > maxScore) {
-      setError(`Баға 0 мен ${maxScore} аралығында болуы керек.`);
+      setError(t(`Баға 0 мен ${maxScore} аралығында болуы керек.`, `The grade must be between 0 and ${maxScore}.`));
       return;
     }
     if (returnForRevision && !feedback.trim()) {
-      setError("Қайта өңдеуге қайтару үшін мұғалім пікірі міндетті.");
+      setError(t("Қайта өңдеуге қайтару үшін мұғалім пікірі міндетті.", "Feedback is required when returning work for revision."));
       return;
     }
     try {
@@ -58,7 +60,7 @@ export function GradeRubric({
         return_for_revision: returnForRevision,
       });
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Бағаны сақтау мүмкін болмады.");
+      setError(submitError instanceof Error ? submitError.message : t("Бағаны сақтау мүмкін болмады.", "Could not save the grade."));
     }
   }
 
@@ -69,9 +71,9 @@ export function GradeRubric({
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs font-bold text-slate-600 uppercase">
               <tr>
-                <th className="px-3 py-2">Критерий</th>
-                <th className="px-3 py-2 text-right">Балл</th>
-                <th className="px-3 py-2 text-center">Орындалды</th>
+                <th className="px-3 py-2">{t("Критерий", "Criterion")}</th>
+                <th className="px-3 py-2 text-right">{t("Балл", "Points")}</th>
+                <th className="px-3 py-2 text-center">{t("Орындалды", "Completed")}</th>
               </tr>
             </thead>
             <tbody>
@@ -87,7 +89,7 @@ export function GradeRubric({
                       checked={selected.has(index)}
                       onChange={() => toggle(index)}
                       className="size-4 accent-brand-700"
-                      aria-label={`${item.criterion} критерийін орындалды деп белгілеу`}
+                      aria-label={t(`${item.criterion} критерийін орындалды деп белгілеу`, `Mark ${item.criterion} as completed`)}
                     />
                   </td>
                 </tr>
@@ -97,10 +99,10 @@ export function GradeRubric({
         </div>
       ) : (
         <p className="text-xs text-slate-500">
-          Бұл жұмыс үшін құрылымдық рубрика енгізілмеген. Бағаны қолмен қойыңыз.
+          {t("Бұл жұмыс үшін құрылымдық рубрика енгізілмеген. Бағаны қолмен қойыңыз.", "No structured rubric has been added. Enter a grade manually.")}
         </p>
       )}
-      <Field label="Баға" htmlFor="grade-value" hint={`Ең жоғары балл: ${maxScore}`} required>
+      <Field label={t("Баға", "Grade")} htmlFor="grade-value" hint={t(`Ең жоғары балл: ${maxScore}`, `Maximum score: ${maxScore}`)} required>
         <TextInput
           id="grade-value"
           type="number"
@@ -111,12 +113,12 @@ export function GradeRubric({
           required
         />
       </Field>
-      <Field label="Мұғалім пікірі" htmlFor="grade-feedback" hint="Қайта өңдеуге қайтарғанда міндетті.">
+      <Field label={t("Мұғалім пікірі", "Teacher feedback")} htmlFor="grade-feedback" hint={t("Қайта өңдеуге қайтарғанда міндетті.", "Required when returning work for revision.")}>
         <TextArea
           id="grade-feedback"
           value={feedback}
           onChange={(event) => setFeedback(event.target.value)}
-          placeholder="Күшті жақтары мен келесі қадамдары..."
+          placeholder={t("Күшті жақтары мен келесі қадамдары...", "Strengths and next steps...")}
         />
       </Field>
       <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -126,11 +128,11 @@ export function GradeRubric({
           onChange={(event) => setReturnForRevision(event.target.checked)}
           className="size-4 accent-amber-600"
         />
-        Қайта өңдеуге қайтару
+        {t("Қайта өңдеуге қайтару", "Return for revision")}
       </label>
       {error ? <Alert tone="error">{error}</Alert> : null}
       <Button type="submit" loading={submitting}>
-        Бағаны сақтау
+        {t("Бағаны сақтау", "Save grade")}
       </Button>
     </form>
   );

@@ -74,9 +74,12 @@ def score_attempt(db: Session, attempt: AssessmentAttempt, assessment: Assessmen
         answer.earned_points = earned
         total_earned += earned
         total_max += float(question.points)
-        if question.competency_id:
-            competency_earned[question.competency_id] += earned
-            competency_max[question.competency_id] += float(question.points)
+        ids = question.competency_ids_json or ([str(question.competency_id)] if question.competency_id else [])
+        for raw_id in ids:
+            competency_id = uuid.UUID(str(raw_id))
+            weight = float((question.competency_weights_json or {}).get(str(competency_id), 1))
+            competency_earned[competency_id] += earned * weight
+            competency_max[competency_id] += float(question.points) * weight
 
     attempt.total_score = round(total_earned, 2)
     attempt.max_score = round(total_max, 2)
@@ -154,6 +157,7 @@ def _score_payload(attempt: AssessmentAttempt) -> list[dict]:
             {
                 "competency_id": score.competency_id,
                 "title": competency.title if competency else "",
+                "title_en": (competency.translation_en or {}).get("title") if competency else None,
                 "slug": competency.slug if competency else "",
                 "earned": score.earned,
                 "maximum": score.maximum,
@@ -198,6 +202,7 @@ def build_comparison(
             {
                 "competency_id": competency_id,
                 "title": post_item["title"] or pre_item["title"],
+                "title_en": post_item.get("title_en") or pre_item.get("title_en"),
                 "slug": post_item["slug"] or pre_item["slug"],
                 "pre_percent": pre_item["percent"],
                 "post_percent": post_item["percent"],

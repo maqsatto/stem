@@ -20,6 +20,15 @@ from app.core.config import settings
 from app.core.security import hash_password
 from app.db.base import Base
 from app.db.session import SessionLocal
+from app.demo_translations import (
+    ALGORITHM_TRANSLATIONS_EN,
+    ASSESSMENT_QUESTIONS_EN,
+    LESSON_TRANSLATIONS_EN,
+    PROJECT_RUBRIC_LABELS_EN,
+    PROJECT_TRANSLATIONS_EN,
+    TASK_RUBRIC_LABELS_EN,
+    TASK_TRANSLATIONS_EN,
+)
 from app.models.assessment import (
     Assessment,
     AssessmentAnswer,
@@ -162,6 +171,15 @@ COMPETENCIES = [
         },
     },
 ]
+
+# English translations of the demonstration competencies; these remain demo material.
+COMPETENCY_TRANSLATIONS_EN = {
+    "logic-algorithmic": {"title": "Logical and algorithmic thinking", "description": "Demo: breaking a problem into steps, designing an algorithm, and explaining an ML model's decision logically.", "indicators_json": ["Breaks a problem into input, processing, and output steps.", "Explains a model's decision as a chain of cause and effect.", "Writes a simple algorithm in pseudocode."], "criteria_json": {"low": "Names steps but struggles to explain their order.", "medium": "Builds an algorithm correctly and explains some decisions.", "high": "Optimizes the algorithm and supports decisions with evidence."}},
+    "data-literacy": {"title": "Working with data", "description": "Demo: collecting and cleaning data, selecting features, and evaluating data quality.", "indicators_json": ["Describes the data source and measurement method.", "Finds missing values and errors.", "Splits training and test sets correctly."], "criteria_json": {"low": "Collects data but cannot check its quality.", "medium": "Performs basic cleaning steps.", "high": "Evaluates data quality using justified criteria."}},
+    "research-skills": {"title": "Research skills", "description": "Demo: forming a hypothesis, planning an experiment, measuring results, and linking conclusions to evidence.", "indicators_json": ["Formulates a testable hypothesis.", "Keeps experimental conditions consistent.", "Compares results with the hypothesis and identifies limitations."], "criteria_json": {"low": "States a hypothesis without a plan to test it.", "medium": "Conducts an experiment and describes the results.", "high": "Plans a repeatable experiment and analyzes sources of error."}},
+    "engineering-design": {"title": "Engineering and design thinking", "description": "Demo: building a prototype to solve a real problem, considering requirements, and improving the solution.", "indicators_json": ["Translates a problem into user needs.", "Builds the simplest version of a prototype.", "Improves a solution based on test results."], "criteria_json": {"low": "Describes an idea without a prototype.", "medium": "Builds a simple working prototype.", "high": "Tests a prototype and makes a measurable improvement."}},
+    "creative-thinking": {"title": "Creative thinking", "description": "Demo: proposing alternative solutions, combining ideas, and applying ML in a new context.", "indicators_json": ["Proposes at least three alternative solutions.", "Combines ideas in a new way.", "Compares the benefits and risks of a solution."], "criteria_json": {"low": "Proposes one standard solution.", "medium": "Compares several alternatives.", "high": "Justifies an original solution and evaluates its risks."}},
+}
 
 ALGORITHMS = [
     {
@@ -935,6 +953,7 @@ def make_assessment(
         kind=kind,
         version=1,
         methodology_key="stem-competencies-demo-v1",
+        translation_en={"name": "STEM competencies: " + ("pre-test" if kind == "pre" else "post-test"), "description": "Demonstration assessment. The customer approves the final questions and rubric.", "instructions": "Read each question carefully. One or more answers may be correct."},
         description=(
             "Демонстрациялық диагностика. Нақты сұрақтар мен рубриканы тапсырыс беруші "
             "ғылыми түрде бекітеді."
@@ -960,9 +979,10 @@ def make_assessment(
                 assessment_id=assessment.id,
                 type=item["type"],
                 body=item["body"],
+                body_en=ASSESSMENT_QUESTIONS_EN[kind][index - 1][0],
                 competency_id=competency_by_slug[item["competency"]].id,
                 points=10,
-                options_json=item["options"] if item["type"] != "open_text" else [],
+                options_json=[{**option, "label_en": label} for option, label in zip(item["options"], ASSESSMENT_QUESTIONS_EN[kind][index - 1][1], strict=True)] if item["type"] != "open_text" else [],
                 order_no=index,
             )
         )
@@ -1064,6 +1084,7 @@ def seed(reset: bool = False) -> None:
             competency = Competency(
                 slug=item["slug"],
                 title=item["title"],
+                translation_en=COMPETENCY_TRANSLATIONS_EN[item["slug"]],
                 description=sanitize_html(item["description"]),
                 indicators_json=item["indicators"],
                 criteria_json=item["criteria"],
@@ -1082,6 +1103,7 @@ def seed(reset: bool = False) -> None:
                 slug=item["slug"],
                 title=item["title"],
                 title_en=item["title_en"],
+                translation_en=ALGORITHM_TRANSLATIONS_EN[item["slug"]],
                 summary=sanitize_html(item["summary"]),
                 body=sanitize_html(item["body"]),
                 status="published",
@@ -1098,6 +1120,7 @@ def seed(reset: bool = False) -> None:
             lesson = Lesson(
                 slug=item["slug"],
                 title=item["title"],
+                translation_en=LESSON_TRANSLATIONS_EN[item["slug"]],
                 algorithm_id=algorithm_by_slug[item["algorithm"]].id
                 if item.get("algorithm")
                 else None,
@@ -1127,6 +1150,7 @@ def seed(reset: bool = False) -> None:
             task = Task(
                 slug=item["slug"],
                 title=item["title"],
+                translation_en={"title": TASK_TRANSLATIONS_EN[item["slug"]][0], "instructions": TASK_TRANSLATIONS_EN[item["slug"]][1], "rubric_labels": TASK_RUBRIC_LABELS_EN.get(item["slug"], [])},
                 lesson_id=lesson_by_slug[item["lesson"]].id,
                 algorithm_id=algorithm_by_slug[item["algorithm"]].id
                 if item.get("algorithm")
@@ -1158,6 +1182,7 @@ def seed(reset: bool = False) -> None:
                     TaskOption(
                         task_id=task.id,
                         label=label,
+                        label_en=TASK_TRANSLATIONS_EN[item["slug"]][2][option_index - 1],
                         is_correct=is_correct,
                         order_no=option_index,
                     )
@@ -1170,6 +1195,7 @@ def seed(reset: bool = False) -> None:
             project = Project(
                 slug=item["slug"],
                 title=item["title"],
+                translation_en={**PROJECT_TRANSLATIONS_EN[item["slug"]], "rubric_labels": PROJECT_RUBRIC_LABELS_EN[item["slug"]]},
                 algorithm_id=algorithm_by_slug[item["algorithm"]].id
                 if item.get("algorithm")
                 else None,

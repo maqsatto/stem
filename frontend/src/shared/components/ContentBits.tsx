@@ -3,6 +3,7 @@ import { CalendarPlus, Download, ExternalLink, FileText } from "lucide-react";
 import { useState } from "react";
 
 import { downloadFile, errorMessage, http } from "@/shared/api";
+import { useText } from "@/shared/preferences";
 import type { Assignment, Classroom, Page, Resource } from "@/shared/types";
 import { Alert, Button, Field, Select, TextArea, TextInput } from "@/shared/ui";
 
@@ -13,11 +14,12 @@ export function ResourceList({
   resources: Resource[];
   title?: string;
 }) {
+  const t = useText();
   const [error, setError] = useState<string | null>(null);
   if (!resources.length) return null;
   return (
     <div>
-      <h2 className="text-base font-bold text-ink-950">{title}</h2>
+      <h2 className="text-base font-bold text-ink-950">{title === "Материалдар мен сілтемелер" ? t("Материалдар мен сілтемелер", "Materials and links") : title}</h2>
       <ul className="mt-3 space-y-2">
         {resources.map((resource) => (
           <li
@@ -29,7 +31,7 @@ export function ResourceList({
               <span className="truncate">{resource.title}</span>
               {resource.audience === "teacher" ? (
                 <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-800">
-                  мұғалімге
+                  {t("мұғалімге", "Teacher only")}
                 </span>
               ) : null}
             </span>
@@ -46,7 +48,7 @@ export function ResourceList({
                 }}
               >
                 <Download className="size-3.5" aria-hidden />
-                Жүктеу
+                {t("Жүктеу", "Download")}
               </button>
             ) : resource.url ? (
               <a
@@ -56,7 +58,7 @@ export function ResourceList({
                 className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-900"
               >
                 <ExternalLink className="size-3.5" aria-hidden />
-                Ашу
+                {t("Ашу", "Open")}
               </a>
             ) : null}
           </li>
@@ -80,6 +82,7 @@ export function AssignToClass({
   contentId: string;
   label?: string;
 }) {
+  const t = useText();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [classroomId, setClassroomId] = useState("");
@@ -104,7 +107,7 @@ export function AssignToClass({
         notes: notes.trim() || null,
       }),
     onSuccess: (assignment) => {
-      setMessage(`«${assignment.classroom_title}» сыныбына тағайындалды.`);
+      setMessage(t(`«${assignment.classroom_title}» сыныбына тағайындалды.`, `Assigned to ${assignment.classroom_title}.`));
       setError(null);
       void queryClient.invalidateQueries({ queryKey: ["assignments"] });
       void queryClient.invalidateQueries({ queryKey: ["teacher-dashboard"] });
@@ -117,7 +120,7 @@ export function AssignToClass({
     return (
       <Button variant="secondary" onClick={() => setOpen(true)}>
         <CalendarPlus className="size-4" aria-hidden />
-        {label}
+        {label === "Сыныпқа тағайындау" ? t("Сыныпқа тағайындау", "Assign to class") : label}
       </Button>
     );
   }
@@ -128,27 +131,27 @@ export function AssignToClass({
       onSubmit={(event) => {
         event.preventDefault();
         if (!classroomId) {
-          setError("Сыныпты таңдаңыз.");
+          setError(t("Сыныпты таңдаңыз.", "Select a class."));
           return;
         }
         mutation.mutate();
       }}
     >
-      <Field label="Сынып" htmlFor="assign-class" required>
+      <Field label={t("Сынып", "Class")} htmlFor="assign-class" required>
         <Select
           id="assign-class"
           value={classroomId}
           onChange={(event) => setClassroomId(event.target.value)}
         >
-          <option value="">Сыныпты таңдаңыз</option>
+          <option value="">{t("Сыныпты таңдаңыз", "Select a class")}</option>
           {(classes.data?.items ?? []).map((classroom) => (
             <option key={classroom.id} value={classroom.id}>
-              {classroom.title} ({classroom.member_count} оқушы)
+              {classroom.title} ({classroom.member_count} {t("оқушы", "students")})
             </option>
           ))}
         </Select>
       </Field>
-      <Field label="Дедлайн (міндетті емес)" htmlFor="assign-due">
+      <Field label={t("Дедлайн (міндетті емес)", "Deadline (optional)")} htmlFor="assign-due">
         <TextInput
           id="assign-due"
           type="datetime-local"
@@ -156,7 +159,7 @@ export function AssignToClass({
           onChange={(event) => setDueAt(event.target.value)}
         />
       </Field>
-      <Field label="Ескертпе (міндетті емес)" htmlFor="assign-notes">
+      <Field label={t("Ескертпе (міндетті емес)", "Notes (optional)")} htmlFor="assign-notes">
         <TextArea
           id="assign-notes"
           value={notes}
@@ -168,10 +171,10 @@ export function AssignToClass({
       {error ? <Alert tone="error">{error}</Alert> : null}
       <div className="flex gap-2">
         <Button type="submit" size="sm" loading={mutation.isPending}>
-          Тағайындау
+          {t("Тағайындау", "Assign")}
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
-          Жабу
+          {t("Жабу", "Close")}
         </Button>
       </div>
     </form>

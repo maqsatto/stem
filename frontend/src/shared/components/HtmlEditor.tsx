@@ -1,6 +1,7 @@
 import { Bold, Code2, Eye, Heading2, Image, Italic, Link2, List, ListOrdered, Pencil } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { useLabel, useText } from "@/shared/preferences";
 import { RichTextRenderer } from "@/shared/components/RichTextRenderer";
 import { cx } from "@/shared/ui";
 
@@ -23,6 +24,8 @@ export function HtmlEditor({
   rows?: number;
   id?: string;
 }) {
+  const t = useText();
+  const translateLabel = useLabel();
   const textarea = useRef<HTMLTextAreaElement>(null);
   const [preview, setPreview] = useState(false);
 
@@ -72,7 +75,7 @@ export function HtmlEditor({
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <label htmlFor={id} className="text-sm font-semibold text-slate-800">
-          {label}
+          {translateLabel(label)}
         </label>
         <div className="flex rounded-lg border border-slate-300 bg-white p-0.5 text-xs">
           <button
@@ -83,7 +86,7 @@ export function HtmlEditor({
             )}
             onClick={() => setPreview(false)}
           >
-            <Pencil className="size-3" aria-hidden /> Өңдеу
+            <Pencil className="size-3" aria-hidden /> {t("Өңдеу", "Edit")}
           </button>
           <button
             type="button"
@@ -93,7 +96,7 @@ export function HtmlEditor({
             )}
             onClick={() => setPreview(true)}
           >
-            <Eye className="size-3" aria-hidden /> Алдын ала қарау
+            <Eye className="size-3" aria-hidden /> {t("Алдын ала қарау", "Preview")}
           </button>
         </div>
       </div>

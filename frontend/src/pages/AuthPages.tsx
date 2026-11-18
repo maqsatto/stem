@@ -8,6 +8,8 @@ import { z } from "zod";
 import { errorMessage, http } from "@/shared/api";
 import { roleHome, useAuth } from "@/shared/auth";
 import { Brand } from "@/shared/components/AppShell";
+import { PreferenceControls } from "@/shared/components/PreferenceControls";
+import { useText } from "@/shared/preferences";
 import { roleLabels } from "@/shared/format";
 import { useTitle } from "@/shared/hooks";
 import type { Me } from "@/shared/types";
@@ -49,6 +51,7 @@ const registerSchema = z
 type RegisterValues = z.infer<typeof registerSchema>;
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
+  const t = useText();
   return (
     <div className="grid min-h-screen lg:grid-cols-[1fr_1.05fr]">
       <div className="relative hidden overflow-hidden bg-ink-950 p-10 text-white lg:flex lg:flex-col lg:justify-between">
@@ -62,37 +65,36 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
             ML + STEM LAB
           </p>
           <h1 className="mt-4 text-4xl font-extrabold leading-tight tracking-tight">
-            Бір платформа — үш кабинет және біртұтас оқу тізбегі
+            {t("Бір платформа — үш кабинет және біртұтас оқу тізбегі", "One platform, three dashboards and a connected learning path")}
           </h1>
           <p className="mt-4 text-sm leading-7 text-slate-300">
-            Оқушы алгоритмнен жобаға дейін өтеді. Мұғалім сыныпты басқарып, нәтижені
-            бақылайды. Әкімші мазмұнды өз бетінше жариялайды. Барлық деректер бір backend
-            және PostgreSQL базасында сақталады.
+            {t("Оқушы алгоритмнен жобаға дейін өтеді. Мұғалім сыныпты басқарып, нәтижені бақылайды. Әкімші мазмұнды өз бетінше жариялайды.", "Students move from algorithms to projects. Teachers manage classes and track results. Administrators publish learning materials.")}
           </p>
           <div className="mt-8 grid gap-3 text-sm">
             <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
               <GraduationCap className="size-5 text-brand-300" aria-hidden />
-              Оқушы: сабақтар, тапсырмалар, жобалар, диагностика
+              {t("Оқушы: сабақтар, тапсырмалар, жобалар, диагностика", "Student: lessons, tasks, projects and assessments")}
             </div>
             <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
               <ShieldCheck className="size-5 text-brand-300" aria-hidden />
-              Мұғалім: сыныптар, тексерулер, CSV есептер
+              {t("Мұғалім: сыныптар, тексерулер, CSV есептер", "Teacher: classes, reviews and CSV reports")}
             </div>
             <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
               <KeyRound className="size-5 text-brand-300" aria-hidden />
-              Әкімші: CMS, файлдар, қолжетімділік
+              {t("Әкімші: CMS, файлдар, қолжетімділік", "Administrator: content, files and access")}
             </div>
           </div>
         </div>
         <p className="relative text-xs text-slate-500">
-          Демо-нұсқа · Ғылыми-әдістемелік мазмұнды тапсырыс беруші бекітеді
+          {t("Демо-нұсқа · Ғылыми-әдістемелік мазмұнды тапсырыс беруші бекітеді", "Demo version · Educational content requires approval")}
         </p>
       </div>
       <div className="flex min-h-screen flex-col bg-slate-50">
+        <div className="flex justify-end px-5 pt-4"><PreferenceControls /></div>
         <div className="flex items-center justify-between px-5 py-4 lg:hidden">
           <Brand to="/" />
           <Link to="/" className="text-sm font-semibold no-underline">
-            Басты бет
+            {t("Басты бет", "Home")}
           </Link>
         </div>
         <div className="flex flex-1 items-center justify-center px-4 py-10">
@@ -104,7 +106,8 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
 }
 
 export function LoginPage() {
-  useTitle("Кіру");
+  const t = useText();
+  useTitle(t("Кіру", "Log in"));
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -141,20 +144,20 @@ export function LoginPage() {
   }
 
   const demoAccounts = [
-    { role: "Оқушы", email: "student@mlstem.kz", password: "Student123!" },
-    { role: "Мұғалім", email: "teacher@mlstem.kz", password: "Teacher123!" },
-    { role: "Әкімші", email: "admin@mlstem.kz", password: "Admin123!" },
+    { role: t("Оқушы", "Student"), email: "student@mlstem.kz", password: "Student123!" },
+    { role: t("Мұғалім", "Teacher"), email: "teacher@mlstem.kz", password: "Teacher123!" },
+    { role: t("Әкімші", "Administrator"), email: "admin@mlstem.kz", password: "Admin123!" },
   ];
 
   return (
     <AuthLayout>
       <Card className="p-6 sm:p-8">
-        <p className="text-xs font-bold tracking-[0.18em] text-brand-700 uppercase">Кіру</p>
+        <p className="text-xs font-bold tracking-[0.18em] text-brand-700 uppercase">{t("Кіру", "Log in")}</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink-950">
-          ML + STEM LAB кабинетіне кіру
+          {t("ML + STEM LAB кабинетіне кіру", "Log in to ML + STEM LAB")}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          Email мен құпиясөзді енгізіңіз. Жүйе сізді рөліңізге сәйкес кабинетке бағыттайды.
+          {t("Email мен құпиясөзді енгізіңіз. Жүйе сізді рөліңізге сәйкес кабинетке бағыттайды.", "Enter your email and password to open your dashboard.")}
         </p>
         <form className="mt-6 space-y-4" onSubmit={(event) => void handleSubmit(submit)(event)}>
           <Field label="Email" htmlFor="login-email" required error={errors.email?.message}>
@@ -167,7 +170,7 @@ export function LoginPage() {
             />
           </Field>
           <Field
-            label="Құпиясөз"
+            label={t("Құпиясөз", "Password")}
             htmlFor="login-password"
             required
             error={errors.password?.message}
@@ -181,19 +184,19 @@ export function LoginPage() {
           </Field>
           {apiError ? <Alert tone="error">{apiError}</Alert> : null}
           <Button type="submit" className="w-full" size="lg" loading={isSubmitting}>
-            Кіру
+            {t("Кіру", "Log in")}
             <ArrowRight className="size-4" aria-hidden />
           </Button>
         </form>
         <p className="mt-4 text-center text-sm text-slate-600">
-          Аккаунтыңыз жоқ па?{" "}
+          {t("Аккаунтыңыз жоқ па?", "Don't have an account?")}{" "}
           <Link to="/register" className="font-semibold no-underline">
-            Оқушы ретінде тіркелу
+            {t("Оқушы ретінде тіркелу", "Sign up as a student")}
           </Link>
         </p>
         <div className="mt-6 border-t border-slate-200 pt-4">
           <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
-            Демо-аккаунттар (тек MVP сынағы үшін)
+            {t("Демо-аккаунттар (тек MVP сынағы үшін)", "Demo accounts (for testing only)")}
           </p>
           <div className="mt-2 grid gap-1.5">
             {demoAccounts.map((account) => (
@@ -215,8 +218,7 @@ export function LoginPage() {
       </Card>
       <div className="mt-4">
         <DemoNotice>
-          Демо-аккаунттар мен мысал деректер тек қабылдау сынағына арналған. Production-да
-          құпиясөздер мен seed деректерін міндетті түрде ауыстырыңыз.
+          {t("Демо-аккаунттар мен мысал деректер тек қабылдау сынағына арналған. Production-да құпиясөздер мен seed деректерін міндетті түрде ауыстырыңыз.", "Demo accounts and sample data are for testing. Change passwords and replace demo data before production use.")}
         </DemoNotice>
       </div>
     </AuthLayout>
@@ -224,7 +226,8 @@ export function LoginPage() {
 }
 
 export function RegisterPage() {
-  useTitle("Тіркелу");
+  const t = useText();
+  useTitle(t("Тіркелу", "Sign up"));
   const { user, register: registerUser } = useAuth();
   const navigate = useNavigate();
   const [apiError, setApiError] = useState<string | null>(null);
@@ -256,15 +259,14 @@ export function RegisterPage() {
   return (
     <AuthLayout>
       <Card className="p-6 sm:p-8">
-        <p className="text-xs font-bold tracking-[0.18em] text-brand-700 uppercase">Тіркелу</p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink-950">Оқушы аккаунты</h1>
+        <p className="text-xs font-bold tracking-[0.18em] text-brand-700 uppercase">{t("Тіркелу", "Sign up")}</p>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink-950">{t("Оқушы аккаунты", "Student account")}</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Өзін-өзі тіркеу тек оқушы рөлі үшін ашық. Мұғалім аккаунтын әкімші шақырады.
-          Жеке деректерді барынша аз беріңіз: тек аты-жөні мен email.
+          {t("Өзін-өзі тіркеу тек оқушы рөлі үшін ашық. Мұғалім аккаунтын әкімші шақырады. Жеке деректерді барынша аз беріңіз: тек аты-жөні мен email.", "Self-registration is available to students. Teachers are invited by an administrator. Only your name and email are needed.")}
         </p>
         <form className="mt-6 space-y-4" onSubmit={(event) => void handleSubmit(submit)(event)}>
           <Field
-            label="Аты-жөні"
+            label={t("Аты-жөні", "Name")}
             htmlFor="register-name"
             required
             error={errors.display_name?.message}
@@ -286,10 +288,10 @@ export function RegisterPage() {
             />
           </Field>
           <Field
-            label="Құпиясөз"
+            label={t("Құпиясөз", "Password")}
             htmlFor="register-password"
             required
-            hint="Кемінде 8 таңба, әріп және цифр."
+            hint={t("Кемінде 8 таңба, әріп және цифр.", "At least 8 characters, including a letter and a number.")}
             error={errors.password?.message}
           >
             <TextInput
@@ -300,7 +302,7 @@ export function RegisterPage() {
             />
           </Field>
           <Field
-            label="Құпиясөзді қайталау"
+            label={t("Құпиясөзді қайталау", "Confirm password")}
             htmlFor="register-confirm"
             required
             error={errors.confirm?.message}
@@ -314,18 +316,17 @@ export function RegisterPage() {
           </Field>
           {apiError ? <Alert tone="error">{apiError}</Alert> : null}
           <Button type="submit" className="w-full" size="lg" loading={isSubmitting}>
-            Тіркелу
+            {t("Тіркелу", "Sign up")}
           </Button>
         </form>
         <p className="mt-4 text-center text-sm text-slate-600">
-          Аккаунтыңыз бар ма?{" "}
+          {t("Аккаунтыңыз бар ма?", "Already have an account?")}{" "}
           <Link to="/login" className="font-semibold no-underline">
-            Кіру
+            {t("Кіру", "Log in")}
           </Link>
         </p>
         <p className="mt-4 text-xs leading-5 text-slate-500">
-          Тіркелу арқылы платформаның оқу мақсатындағы деректерді өңдеу қағидаларымен
-          келісесіз. Есептік жазбаны әкімші кез келген уақытта өшіре алады.
+          {t("Тіркелу арқылы платформаның оқу мақсатындағы деректерді өңдеу қағидаларымен келісесіз. Есептік жазбаны әкімші кез келген уақытта өшіре алады.", "By registering, you agree to the processing of data for educational purposes. An administrator can deactivate your account.")}
         </p>
       </Card>
       <div className="mt-4">
@@ -359,7 +360,8 @@ const passwordSchema = z
 type PasswordValues = z.infer<typeof passwordSchema>;
 
 export function AccountPage() {
-  useTitle("Аккаунт");
+  const t = useText();
+  useTitle(t("Аккаунт", "Account"));
   const { user, refreshMe, logout } = useAuth();
   const navigate = useNavigate();
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
@@ -384,7 +386,7 @@ export function AccountPage() {
     try {
       await http.patch<Me>("/me", { display_name: values.display_name.trim() });
       await refreshMe();
-      setProfileMessage("Профиль жаңартылды.");
+      setProfileMessage(t("Профиль жаңартылды.", "Profile updated."));
     } catch (error) {
       setProfileError(errorMessage(error));
     }
@@ -398,7 +400,7 @@ export function AccountPage() {
         current_password: values.current_password,
         new_password: values.new_password,
       });
-      setPasswordMessage("Құпиясөз жаңартылды. Қайта кіру қажет.");
+      setPasswordMessage(t("Құпиясөз жаңартылды. Қайта кіру қажет.", "Password updated. Please sign in again."));
       await logout();
       navigate("/login", { replace: true });
     } catch (error) {
@@ -411,27 +413,27 @@ export function AccountPage() {
       <PageHeader
         eyebrow="Аккаунт"
         title="Профиль және қауіпсіздік"
-        description="Аты-жөнін өзгерту, құпиясөзді жаңарту және рөл/сынып ақпаратын қарау."
+        description={t("Аты-жөнін өзгерту, құпиясөзді жаңарту және рөл/сынып ақпаратын қарау.", "Update your name and password and view your role and classes.")}
         actions={
           <LinkButton to={roleHome(user.role)} variant="secondary">
-            Кабинетке оралу
+            {t("Кабинетке оралу", "Back to dashboard")}
           </LinkButton>
         }
       />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <h2 className="text-lg font-bold text-ink-950">Профиль</h2>
+          <h2 className="text-lg font-bold text-ink-950">{t("Профиль", "Profile")}</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between gap-3">
               <dt className="text-slate-500">Email</dt>
               <dd className="font-semibold text-slate-800">{user.email}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">Рөл</dt>
-              <dd className="font-semibold text-slate-800">{roleLabels[user.role]}</dd>
+              <dt className="text-slate-500">{t("Рөл", "Role")}</dt>
+              <dd className="font-semibold text-slate-800">{t(roleLabels[user.role], ({student: "Student", teacher: "Teacher", admin: "Administrator"} as Record<string, string>)[user.role] ?? user.role)}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">Сыныптар</dt>
+              <dt className="text-slate-500">{t("Сыныптар", "Classes")}</dt>
               <dd className="text-right font-semibold text-slate-800">
                 {user.classrooms.length > 0
                   ? user.classrooms.map((item) => item.title).join(", ")
@@ -454,14 +456,14 @@ export function AccountPage() {
             {profileMessage ? <Alert tone="success">{profileMessage}</Alert> : null}
             {profileError ? <Alert tone="error">{profileError}</Alert> : null}
             <Button type="submit" loading={profileForm.formState.isSubmitting}>
-              Сақтау
+              {t("Сақтау", "Save")}
             </Button>
           </form>
         </Card>
         <Card>
-          <h2 className="text-lg font-bold text-ink-950">Құпиясөзді ауыстыру</h2>
+          <h2 className="text-lg font-bold text-ink-950">{t("Құпиясөзді ауыстыру", "Change password")}</h2>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            Құпиясөз ауысқаннан кейін барлық белсенді сессиялар жабылады.
+            {t("Құпиясөз ауысқаннан кейін барлық белсенді сессиялар жабылады.", "Changing your password signs out all active sessions.")}
           </p>
           <form
             className="mt-4 space-y-4"
@@ -511,10 +513,10 @@ export function AccountPage() {
             {passwordError ? <Alert tone="error">{passwordError}</Alert> : null}
             <div className="flex gap-2">
               <Button type="submit" loading={passwordForm.formState.isSubmitting}>
-                Құпиясөзді жаңарту
+                {t("Құпиясөзді жаңарту", "Update password")}
               </Button>
               <Button type="button" variant="ghost" onClick={() => void logout()}>
-                Шығу
+                {t("Шығу", "Log out")}
               </Button>
             </div>
           </form>
@@ -522,9 +524,8 @@ export function AccountPage() {
       </div>
       {user.must_change_password ? (
         <div className="mt-6">
-          <Alert tone="warning" title="Уақытша құпиясөз">
-            Әкімші берген уақытша құпиясөзбен кірдіңіз. Қауіпсіздік үшін құпиясөзді дереу
-            ауыстырыңыз.
+          <Alert tone="warning" title={t("Уақытша құпиясөз", "Temporary password")}>
+            {t("Әкімші берген уақытша құпиясөзбен кірдіңіз. Қауіпсіздік үшін құпиясөзді дереу ауыстырыңыз.", "You signed in with a temporary password. Change it now for security.")}
           </Alert>
         </div>
       ) : null}

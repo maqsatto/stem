@@ -3,12 +3,14 @@ import { CopyPlus, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { errorMessage, http } from "@/shared/api";
+import { omitUnchangedAssessmentStructure } from "@/shared/assessmentChanges";
 import {
   AdminEditorCard,
   AdminEmptyEditor,
   AdminListButton,
   CompetencyPicker,
   DemoField,
+  DraftPreview,
   OptionEditor,
   RubricEditor,
   StatusField,
@@ -21,6 +23,9 @@ import {
 import { HtmlEditor } from "@/shared/components/HtmlEditor";
 import { difficultyLabels, statusLabels, taskTypeLabels } from "@/shared/format";
 import { useTitle } from "@/shared/hooks";
+import { remapRubricLabels } from "@/shared/rubricLabels";
+import { useLabel, usePreferences, useText } from "@/shared/preferences";
+import { localizeAssessment, localizeLesson, localizeProject, localizeTask } from "@/shared/localizeContent";
 import type {
   AdminAssessment,
   AdminLesson,
@@ -127,6 +132,7 @@ function LessonEditor({
   const [body, setBody] = useState(initial?.body ?? "");
   const [goal, setGoal] = useState(initial?.goal ?? "");
   const [reflection, setReflection] = useState(initial?.reflection ?? "");
+  const [translationEn, setTranslationEn] = useState(initial?.translation_en ?? {});
   const [durationMin, setDurationMin] = useState(String(initial?.duration_min ?? 45));
   const [orderNo, setOrderNo] = useState(String(initial?.order_no ?? 1));
   const [competencyIds, setCompetencyIds] = useState<string[]>(initial?.competency_ids ?? []);
@@ -143,6 +149,7 @@ function LessonEditor({
         body,
         goal,
         reflection,
+        translation_en: translationEn,
         duration_min: Number(durationMin) || 45,
         order_no: Number(orderNo) || 1,
         competency_ids: competencyIds,
@@ -172,6 +179,7 @@ function LessonEditor({
       onSaved={onSaved}
       onDeleted={() => onSaved("")}
     >
+      <DraftPreview title={title} sections={[{ label: "Сипаттама", html: summary }, { label: "Мақсат", html: goal }, { label: "Мазмұн", html: body }, { label: "Рефлексия", html: reflection }]} />
       <form
         className="space-y-4"
         onSubmit={(event) => {
@@ -259,6 +267,16 @@ function LessonEditor({
             className="min-h-20"
           />
         </Field>
+        <details className="rounded-lg border border-slate-200 p-4">
+          <summary className="cursor-pointer font-semibold">English translation (optional)</summary>
+          <div className="mt-4 space-y-3">
+            <Field label="Title (English)" htmlFor="lesson-title-en"><TextInput id="lesson-title-en" value={translationEn.title ?? ""} onChange={(event) => setTranslationEn({ ...translationEn, title: event.target.value })} /></Field>
+            <Field label="Summary (English)" htmlFor="lesson-summary-en"><TextArea id="lesson-summary-en" value={translationEn.summary ?? ""} onChange={(event) => setTranslationEn({ ...translationEn, summary: event.target.value })} /></Field>
+            <Field label="Goal (English)" htmlFor="lesson-goal-en"><TextArea id="lesson-goal-en" value={translationEn.goal ?? ""} onChange={(event) => setTranslationEn({ ...translationEn, goal: event.target.value })} /></Field>
+            <HtmlEditor value={translationEn.body ?? ""} onChange={(value) => setTranslationEn({ ...translationEn, body: value })} id="lesson-body-en" label="Lesson content (English)" />
+            <Field label="Reflection (English)" htmlFor="lesson-reflection-en"><TextArea id="lesson-reflection-en" value={translationEn.reflection ?? ""} onChange={(event) => setTranslationEn({ ...translationEn, reflection: event.target.value })} /></Field>
+          </div>
+        </details>
         <CompetencyPicker
           options={refs.competencies}
           selected={competencyIds}
@@ -278,7 +296,10 @@ function LessonEditor({
 }
 
 export function AdminLessonsPage() {
-  useTitle("Сабақтар");
+  const t = useText();
+  const label = useLabel();
+  const { language } = usePreferences();
+  useTitle(t("Сабақтар", "Lessons"));
   const queryClient = useQueryClient();
   const [editId, setEditId] = useEditParam();
   const isNew = editId === "new";
@@ -302,18 +323,18 @@ export function AdminLessonsPage() {
     <div>
       <PageHeader
         eyebrow="CMS"
-        title="Сабақтар"
-        description="Сабақ мазмұны, мақсаты, рефлексиясы және STEM құзыреттіліктерімен байланысы. Сабақ жарияланған соң мұғалім оны сыныпқа тағайындай алады."
+        title={t("Сабақтар", "Lessons")}
+        description={t("Сабақ мазмұны, мақсаты, рефлексиясы және STEM құзыреттіліктерімен байланысы. Сабақ жарияланған соң мұғалім оны сыныпқа тағайындай алады.", "Edit lesson content, goals, reflection, and competencies. Teachers can assign published lessons to classes.")}
         actions={
           <Button type="button" onClick={() => setEditId("new")}>
             <Plus className="size-4" aria-hidden />
-            Жаңа сабақ
+            {t("Жаңа сабақ", "New lesson")}
           </Button>
         }
       />
       <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
         <Card className="self-start">
-          <h2 className="text-sm font-bold text-ink-950">Сабақтар</h2>
+          <h2 className="text-sm font-bold text-ink-950">{t("Сабақтар", "Lessons")}</h2>
           {list.isLoading ? (
             <PageLoader />
           ) : list.isError ? (
@@ -324,8 +345,8 @@ export function AdminLessonsPage() {
                 <AdminListButton
                   key={item.id}
                   active={selectedId === item.id}
-                  title={`${item.order_no}. ${item.title}`}
-                  meta={`${statusLabels[item.status] ?? item.status}${item.is_demo ? " · демо" : ""}`}
+                  title={`${item.order_no}. ${localizeLesson(item, language).title}`}
+                  meta={`${label(statusLabels[item.status] ?? item.status)}${item.is_demo ? t(" · демо", " · demo") : ""}`}
                   onClick={() => setEditId(item.id)}
                 />
               ))}
@@ -349,7 +370,7 @@ export function AdminLessonsPage() {
               />
             ) : null
           ) : (
-            <AdminEmptyEditor text="Сабақты таңдаңыз немесе жаңа сабақ жасаңыз." />
+            <AdminEmptyEditor text={t("Сабақты таңдаңыз немесе жаңа сабақ жасаңыз.", "Select a lesson or create a new one.")} />
           )}
         </div>
       </div>
@@ -373,6 +394,7 @@ function TaskEditor({
   onSaved: (id: string) => void;
   refs: ReturnType<typeof useAdminReferences>;
 }) {
+  const [translationEn, setTranslationEn] = useState<NonNullable<AdminTask["translation_en"]>>(initial?.translation_en ?? {});
   const [title, setTitle] = useState(initial?.title ?? "");
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [type, setType] = useState<TaskType>(initial?.type ?? "single_choice");
@@ -400,6 +422,7 @@ function TaskEditor({
     mutationFn: async () => {
       const payload: Record<string, unknown> = {
         title: title.trim(),
+        translation_en: translationEn,
         lesson_id: lessonId || null,
         algorithm_id: algorithmId || null,
         type,
@@ -413,7 +436,9 @@ function TaskEditor({
         competency_ids: competencyIds,
         options: closed
           ? options.map((option, index) => ({
+              id: option.id,
               label: option.label,
+              label_en: option.label_en ?? "",
               is_correct: option.is_correct,
               order_no: index + 1,
             }))
@@ -444,6 +469,7 @@ function TaskEditor({
       onSaved={onSaved}
       onDeleted={() => onSaved("")}
     >
+      <DraftPreview title={title} sections={[{ label: "Нұсқау", html: instructions }, { label: "Мазмұн", html: body }, ...options.map((option, index) => ({ label: `${index + 1}`, html: option.label }))]} />
       <form
         className="space-y-4"
         onSubmit={(event) => {
@@ -560,6 +586,7 @@ function TaskEditor({
         />
         {closed ? (
           <OptionEditor
+            english
             options={options}
             multiple={type === "multiple_choice"}
             onChange={setOptions}
@@ -567,7 +594,16 @@ function TaskEditor({
             hint="Жабық тест серверде автоматты тексеріледі. Дұрыс жауаптар оқушыға тек рұқсат етілсе көрінеді."
           />
         ) : null}
-        <RubricEditor items={rubric} onChange={setRubric} />
+        <details className="rounded-xl border border-slate-200 p-4">
+          <summary className="cursor-pointer font-semibold">English translation</summary>
+          <div className="mt-4 space-y-4">
+            {rubric.map((item, index) => <Field key={index} label={`English criterion: ${item.criterion}`} htmlFor={`task-rubric-en-${index}`}><TextInput id={`task-rubric-en-${index}`} value={translationEn.rubric_labels?.[index] ?? ""} onChange={(event) => { const labels = [...(translationEn.rubric_labels ?? [])]; labels[index] = event.target.value; setTranslationEn({ ...translationEn, rubric_labels: Array.from({ length: rubric.length }, (_, i) => labels[i] ?? "") }); }} /></Field>)}
+            {(["title", "instructions", "body"] as const).map((field) => (
+              <Field key={field} label={`English: ${field}`} htmlFor={`task-en-${field}`}><TextArea id={`task-en-${field}`} value={translationEn[field] ?? ""} onChange={(event) => setTranslationEn({ ...translationEn, [field]: event.target.value })} /></Field>
+            ))}
+          </div>
+        </details>
+        <RubricEditor items={rubric} onChange={(next) => { setTranslationEn((current) => ({ ...current, rubric_labels: remapRubricLabels(rubric, next, current.rubric_labels ?? []) })); setRubric(next); }} />
         <CompetencyPicker
           options={refs.competencies}
           selected={competencyIds}
@@ -596,7 +632,10 @@ function TaskEditor({
 }
 
 export function AdminTasksPage() {
-  useTitle("Тапсырмалар");
+  const t = useText();
+  const label = useLabel();
+  const { language } = usePreferences();
+  useTitle(t("Тапсырмалар", "Tasks"));
   const queryClient = useQueryClient();
   const [editId, setEditId] = useEditParam();
   const isNew = editId === "new";
@@ -620,18 +659,18 @@ export function AdminTasksPage() {
     <div>
       <PageHeader
         eyebrow="CMS"
-        title="Тапсырмалар"
-        description="Жабық тесттер, ашық жауаптар, файл жүктеу және сілтеме тапсырмалары. Жабық тесттер серверде автоматты тексеріледі."
+        title={t("Тапсырмалар", "Tasks")}
+        description={t("Жабық тесттер, ашық жауаптар, файл жүктеу және сілтеме тапсырмалары. Жабық тесттер серверде автоматты тексеріледі.", "Manage closed questions, open responses, file uploads, and link tasks. Closed questions are graded automatically.")}
         actions={
           <Button type="button" onClick={() => setEditId("new")}>
             <Plus className="size-4" aria-hidden />
-            Жаңа тапсырма
+            {t("Жаңа тапсырма", "New task")}
           </Button>
         }
       />
       <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
         <Card className="self-start">
-          <h2 className="text-sm font-bold text-ink-950">Тапсырмалар</h2>
+          <h2 className="text-sm font-bold text-ink-950">{t("Тапсырмалар", "Tasks")}</h2>
           {list.isLoading ? (
             <PageLoader />
           ) : list.isError ? (
@@ -642,9 +681,9 @@ export function AdminTasksPage() {
                 <AdminListButton
                   key={item.id}
                   active={selectedId === item.id}
-                  title={item.title}
-                  meta={`${taskTypeLabels[item.type] ?? item.type} · ${
-                    statusLabels[item.status] ?? item.status
+                  title={localizeTask(item, language).title}
+                  meta={`${label(taskTypeLabels[item.type] ?? item.type)} · ${
+                    label(statusLabels[item.status] ?? item.status)
                   }`}
                   onClick={() => setEditId(item.id)}
                 />
@@ -669,7 +708,7 @@ export function AdminTasksPage() {
               />
             ) : null
           ) : (
-            <AdminEmptyEditor text="Тапсырманы таңдаңыз немесе жаңасын жасаңыз." />
+            <AdminEmptyEditor text={t("Тапсырманы таңдаңыз немесе жаңасын жасаңыз.", "Select a task or create a new one.")} />
           )}
         </div>
       </div>
@@ -693,6 +732,7 @@ function ProjectEditor({
   onSaved: (id: string) => void;
   refs: ReturnType<typeof useAdminReferences>;
 }) {
+  const [translationEn, setTranslationEn] = useState<NonNullable<AdminProject["translation_en"]>>(initial?.translation_en ?? {});
   const [title, setTitle] = useState(initial?.title ?? "");
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [algorithmId, setAlgorithmId] = useState(initial?.algorithm?.id ?? "");
@@ -717,6 +757,7 @@ function ProjectEditor({
     mutationFn: async () => {
       const payload: Record<string, unknown> = {
         title: title.trim(),
+        translation_en: translationEn,
         algorithm_id: algorithmId || null,
         summary,
         problem,
@@ -756,6 +797,7 @@ function ProjectEditor({
       onSaved={onSaved}
       onDeleted={() => onSaved("")}
     >
+      <DraftPreview title={title} sections={[{ label: "Сипаттама", html: summary }, { label: "Мәселе", html: problem }, { label: "Мақсат", html: goal }, { label: "Мазмұн", html: body }, { label: "Нәтиже", html: expectedResult }]} />
       <form
         className="space-y-4"
         onSubmit={(event) => {
@@ -848,7 +890,21 @@ function ProjectEditor({
             className="min-h-20"
           />
         </Field>
-        <RubricEditor items={rubric} onChange={setRubric} />
+        <details className="rounded-xl border border-slate-200 p-4">
+          <summary className="cursor-pointer font-semibold">English translation</summary>
+          <div className="mt-4 space-y-4">
+            {rubric.map((item, index) => <Field key={index} label={`English criterion: ${item.criterion}`} htmlFor={`project-rubric-en-${index}`}><TextInput id={`project-rubric-en-${index}`} value={translationEn.rubric_labels?.[index] ?? ""} onChange={(event) => { const labels = [...(translationEn.rubric_labels ?? [])]; labels[index] = event.target.value; setTranslationEn({ ...translationEn, rubric_labels: Array.from({ length: rubric.length }, (_, i) => labels[i] ?? "") }); }} /></Field>)}
+            {(["title", "summary", "problem", "goal", "body", "expected_result"] as const).map((field) => (
+              <Field key={field} label={`English: ${field}`} htmlFor={`project-en-${field}`}>
+                <TextArea id={`project-en-${field}`} value={translationEn[field] ?? ""} onChange={(event) => setTranslationEn({ ...translationEn, [field]: event.target.value })} />
+              </Field>
+            ))}
+            {(["steps_json", "materials_json", "tools_json"] as const).map((field) => (
+              <TextListEditor key={field} label={`English: ${field}`} items={translationEn[field]?.length ? translationEn[field]! : [""]} onChange={(items) => setTranslationEn({ ...translationEn, [field]: items.filter((item) => item.trim()) })} />
+            ))}
+          </div>
+        </details>
+        <RubricEditor items={rubric} onChange={(next) => { setTranslationEn((current) => ({ ...current, rubric_labels: remapRubricLabels(rubric, next, current.rubric_labels ?? []) })); setRubric(next); }} />
         <CompetencyPicker
           options={refs.competencies}
           selected={competencyIds}
@@ -868,6 +924,9 @@ function ProjectEditor({
 }
 
 export function AdminProjectsPage() {
+  const t = useText();
+  const label = useLabel();
+  const { language } = usePreferences();
   useTitle("Жобалар");
   const queryClient = useQueryClient();
   const [editId, setEditId] = useEditParam();
@@ -892,18 +951,18 @@ export function AdminProjectsPage() {
     <div>
       <PageHeader
         eyebrow="CMS"
-        title="STEM жобалары"
-        description="Жобаның мәселесі, мақсаты, қадамдары, материалдары және бағалау рубрикасы. Жоба нәтижесін мұғалім рубрика бойынша бағалайды."
+        title={t("STEM жобалары", "STEM projects")}
+        description={t("Жобаның мәселесі, мақсаты, қадамдары, материалдары және бағалау рубрикасы. Жоба нәтижесін мұғалім рубрика бойынша бағалайды.", "Edit project problems, goals, steps, materials, and assessment rubrics.")}
         actions={
           <Button type="button" onClick={() => setEditId("new")}>
             <Plus className="size-4" aria-hidden />
-            Жаңа жоба
+            {t("Жаңа жоба", "New project")}
           </Button>
         }
       />
       <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
         <Card className="self-start">
-          <h2 className="text-sm font-bold text-ink-950">Жобалар</h2>
+          <h2 className="text-sm font-bold text-ink-950">{t("Жобалар", "Projects")}</h2>
           {list.isLoading ? (
             <PageLoader />
           ) : list.isError ? (
@@ -914,8 +973,8 @@ export function AdminProjectsPage() {
                 <AdminListButton
                   key={item.id}
                   active={selectedId === item.id}
-                  title={item.title}
-                  meta={`${statusLabels[item.status] ?? item.status}${item.is_demo ? " · демо" : ""}`}
+                  title={localizeProject(item, language).title}
+                  meta={`${label(statusLabels[item.status] ?? item.status)}${item.is_demo ? t(" · демо", " · demo") : ""}`}
                   onClick={() => setEditId(item.id)}
                 />
               ))}
@@ -939,7 +998,7 @@ export function AdminProjectsPage() {
               />
             ) : null
           ) : (
-            <AdminEmptyEditor text="Жобаны таңдаңыз немесе жаңасын жасаңыз." />
+            <AdminEmptyEditor text={t("Жобаны таңдаңыз немесе жаңасын жасаңыз.", "Select a project or create a new one.")} />
           )}
         </div>
       </div>
@@ -957,7 +1016,10 @@ export function AdminProjectsPage() {
 interface QuestionDraft {
   type: "single_choice" | "multiple_choice" | "open_text";
   body: string;
+  body_en: string;
   competency_id: string;
+  competency_ids: string[];
+  competency_weights: Record<string, number>;
   points: number;
   order_no: number;
   options: OptionDraft[];
@@ -967,11 +1029,15 @@ function questionFromApi(question: AssessmentQuestion): QuestionDraft {
   return {
     type: question.type,
     body: question.body,
+    body_en: question.body_en ?? "",
     competency_id: question.competency_id ?? "",
+    competency_ids: question.competency_ids ?? (question.competency_id ? [question.competency_id] : []),
+    competency_weights: question.competency_weights ?? {},
     points: question.points,
     order_no: question.order_no,
     options: (question.options ?? []).map((option: AssessmentOption) => ({
       label: option.label,
+      label_en: option.label_en,
       is_correct: Boolean(option.is_correct),
       order_no: option.order_no,
     })),
@@ -989,6 +1055,7 @@ function AssessmentEditor({
   refs: ReturnType<typeof useAdminReferences>;
   onNewVersion?: () => void;
 }) {
+  const [translationEn, setTranslationEn] = useState<NonNullable<AdminAssessment["translation_en"]>>(initial?.translation_en ?? {});
   const [name, setName] = useState(initial?.name ?? "");
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [kind, setKind] = useState<AssessmentKind>(initial?.kind ?? "quiz");
@@ -1039,9 +1106,11 @@ function AssessmentEditor({
         attempt_rule: initialConfig.attempt_rule ?? "first_completed",
       };
       if (Object.keys(currentWeights).length > 0) scoringConfig.weights = currentWeights;
+      else delete scoringConfig.weights;
 
       const payload: Record<string, unknown> = {
         name: name.trim(),
+        translation_en: translationEn,
         kind,
         version: Number(version) || 1,
         methodology_key: methodologyKey.trim() || "default",
@@ -1054,7 +1123,10 @@ function AssessmentEditor({
         questions: questions.map((question, index) => ({
           type: question.type,
           body: question.body,
+          body_en: question.body_en,
           competency_id: question.competency_id || null,
+          competency_ids: question.competency_ids,
+          competency_weights: Object.fromEntries(question.competency_ids.map((id) => [id, question.competency_weights[id] ?? 1])),
           points: question.points,
           order_no: question.order_no || index + 1,
           options:
@@ -1062,6 +1134,7 @@ function AssessmentEditor({
               ? []
               : question.options.map((option, optionIndex) => ({
                   label: option.label,
+                  label_en: option.label_en ?? "",
                   is_correct: option.is_correct,
                   order_no: optionIndex + 1,
                 })),
@@ -1069,9 +1142,17 @@ function AssessmentEditor({
       };
       if (slug.trim()) payload.slug = slug.trim();
       else if (!initial) payload.slug = null;
-      return initial
-        ? http.patch<AdminAssessment>(`/admin/assessments/${initial.id}`, payload)
-        : http.post<AdminAssessment>("/admin/assessments", payload);
+      if (!initial) return http.post<AdminAssessment>("/admin/assessments", payload);
+      const originalWeights = Object.fromEntries(Object.entries(initialWeights).map(([id, value]) => [id, String(value)]));
+      const structural = omitUnchangedAssessmentStructure(payload, {
+        kind, version: Number(version) || 1, methodologyKey: methodologyKey.trim() || "default", questions,
+        scoring: { lowThreshold, mediumThreshold, weights },
+      }, {
+        kind: initial.kind, version: initial.version, methodologyKey: initial.methodology_key,
+        questions: (initial.questions ?? []).map(questionFromApi),
+        scoring: { lowThreshold: String(initialThresholds.low ?? 50), mediumThreshold: String(initialThresholds.medium ?? 75), weights: originalWeights },
+      });
+      return http.patch<AdminAssessment>(`/admin/assessments/${initial.id}`, structural);
     },
     onSuccess: (data) => {
       setError(null);
@@ -1113,6 +1194,7 @@ function AssessmentEditor({
         ) : undefined
       }
     >
+      <DraftPreview title={name} sections={[{ label: "Сипаттама", html: description }, { label: "Нұсқау", html: instructions }, ...questions.map((question, index) => ({ label: `${index + 1}`, html: question.body }))]} />
       <form
         className="space-y-4"
         onSubmit={(event) => {
@@ -1327,6 +1409,9 @@ function AssessmentEditor({
           </details>
         </div>
 
+        <details className="rounded-xl border border-slate-200 p-4"><summary className="cursor-pointer font-semibold">English translation</summary><div className="mt-4 space-y-4">
+          {(["name", "description", "instructions"] as const).map((field) => <Field key={field} label={`English: ${field}`} htmlFor={`assessment-en-${field}`}><TextArea id={`assessment-en-${field}`} value={translationEn[field] ?? ""} onChange={(event) => setTranslationEn({ ...translationEn, [field]: event.target.value })} /></Field>)}
+        </div></details>
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-lg font-bold text-ink-950">Сұрақтар ({questions.length})</h2>
@@ -1340,7 +1425,10 @@ function AssessmentEditor({
                   {
                     type: "single_choice",
                     body: "",
+                    body_en: "",
                     competency_id: "",
+                    competency_ids: [],
+                    competency_weights: {},
                     points: 1,
                     order_no: questions.length + 1,
                     options: [
@@ -1406,23 +1494,21 @@ function AssessmentEditor({
                     }
                   />
                 </Field>
-                <Field label="Құзыреттілік" htmlFor={`question-competency-${index}`}>
-                  <Select
-                    id={`question-competency-${index}`}
-                    value={question.competency_id}
-                    onChange={(event) =>
-                      updateQuestion(index, { competency_id: event.target.value })
-                    }
-                  >
-                    <option value="">Таңдалмаған</option>
-                    {refs.competencies.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.title}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
+                <CompetencyPicker
+                  options={refs.competencies}
+                  selected={question.competency_ids}
+                  onChange={(ids) => updateQuestion(index, { competency_ids: ids, competency_id: ids[0] ?? "" })}
+                />
               </div>
+              {question.competency_ids.length ? <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {question.competency_ids.map((competencyId) => (
+                  <Field key={competencyId} label={`${refs.competencies.find((item) => item.id === competencyId)?.title ?? competencyId} · салмақ`} htmlFor={`question-weight-${index}-${competencyId}`}>
+                    <TextInput id={`question-weight-${index}-${competencyId}`} type="number" min={0.01} max={100} step={0.01}
+                      value={question.competency_weights[competencyId] ?? 1}
+                      onChange={(event) => updateQuestion(index, { competency_weights: { ...question.competency_weights, [competencyId]: Number(event.target.value) } })} />
+                  </Field>
+                ))}
+              </div> : null}
               <div className="mt-3">
                 <Field label="Сұрақ мәтіні (HTML қолжетімді)" htmlFor={`question-body-${index}`}>
                   <TextArea
@@ -1433,9 +1519,11 @@ function AssessmentEditor({
                   />
                 </Field>
               </div>
+              <Field label="English question" htmlFor={`question-body-en-${index}`}><TextArea id={`question-body-en-${index}`} value={question.body_en} onChange={(event) => updateQuestion(index, { body_en: event.target.value })} /></Field>
               {question.type !== "open_text" ? (
                 <div className="mt-3">
                   <OptionEditor
+                    english
                     options={question.options}
                     multiple={question.type === "multiple_choice"}
                     onChange={(options) => updateQuestion(index, { options })}
@@ -1474,7 +1562,10 @@ function AssessmentEditor({
 }
 
 export function AdminAssessmentsPage() {
-  useTitle("Диагностикалар");
+  const t = useText();
+  const label = useLabel();
+  const { language } = usePreferences();
+  useTitle(t("Диагностикалар", "Assessments"));
   const queryClient = useQueryClient();
   const [editId, setEditId] = useEditParam();
   const isNew = editId === "new";
@@ -1506,18 +1597,18 @@ export function AdminAssessmentsPage() {
     <div>
       <PageHeader
         eyebrow="CMS"
-        title="Диагностикалар"
-        description="Pre-test, post-test және тесттер. Сұрақтар құзыреттіліктерге байланысады; аяқталған талпыныстан кейін құрылымды өзгерту үшін жаңа нұсқа жасалады."
+        title={t("Диагностикалар", "Assessments")}
+        description={t("Pre-test, post-test және тесттер. Сұрақтар құзыреттіліктерге байланысады; аяқталған талпыныстан кейін құрылымды өзгерту үшін жаңа нұсқа жасалады.", "Manage pre-tests, post-tests, and quizzes. Create a new version to change the structure after attempts exist.")}
         actions={
           <Button type="button" onClick={() => setEditId("new")}>
             <Plus className="size-4" aria-hidden />
-            Жаңа диагностика
+            {t("Жаңа диагностика", "New assessment")}
           </Button>
         }
       />
       <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
         <Card className="self-start">
-          <h2 className="text-sm font-bold text-ink-950">Диагностикалар</h2>
+          <h2 className="text-sm font-bold text-ink-950">{t("Диагностикалар", "Assessments")}</h2>
           {list.isLoading ? (
             <PageLoader />
           ) : list.isError ? (
@@ -1528,9 +1619,9 @@ export function AdminAssessmentsPage() {
                 <AdminListButton
                   key={item.id}
                   active={selectedId === item.id}
-                  title={`${item.name} (v${item.version})`}
+                  title={`${localizeAssessment(item, language).name} (v${item.version})`}
                   meta={`${item.kind === "pre" ? "Pre-test" : item.kind === "post" ? "Post-test" : "Тест"} · ${
-                    statusLabels[item.status] ?? item.status
+                    label(statusLabels[item.status] ?? item.status)
                   }`}
                   onClick={() => setEditId(item.id)}
                 />
@@ -1556,7 +1647,7 @@ export function AdminAssessmentsPage() {
               />
             ) : null
           ) : (
-            <AdminEmptyEditor text="Диагностиканы таңдаңыз немесе жаңасын жасаңыз." />
+            <AdminEmptyEditor text={t("Диагностиканы таңдаңыз немесе жаңасын жасаңыз.", "Select an assessment or create a new one.")} />
           )}
           {newVersion.isError ? (
             <div className="mt-4">

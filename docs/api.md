@@ -114,9 +114,11 @@ curl -s http://localhost:8080/api/v1/auth/login \
 
 Списки уроков, заданий и проектов поддерживают поиск `q`, фильтры
 `algorithm_id` и `competency_id`, а также `page` и `page_size` (до 100).
-Для заданий доступны дополнительные фильтры `lesson_id`, `difficulty` и
-`type`. Параметр `sort` заданий принимает `order`, `difficulty` (от лёгкого
-к сложному), `date` (сначала новые) или `title`.
+Для заданий доступны дополнительные фильтры `lesson_id`, `classroom_id`,
+`difficulty` и `type`. Фильтр `classroom_id` требует авторизации и проверяет
+доступ к классу. Параметр `sort` заданий принимает `order`, `difficulty` (от
+лёгкого к сложному), `date` (сначала новые) или `title`; уроки и проекты
+поддерживают `order`, `date` и `title`.
 
 ## 5. Ученик
 

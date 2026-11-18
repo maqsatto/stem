@@ -308,6 +308,7 @@ def my_results(
             latest_by_competency[score.competency_id] = {
                 "competency_id": score.competency_id,
                 "title": score.competency.title if score.competency else "",
+                "title_en": (score.competency.translation_en or {}).get("title") if score.competency else None,
                 "slug": score.competency.slug if score.competency else "",
                 "earned": score.earned,
                 "maximum": score.maximum,
@@ -423,6 +424,7 @@ def teacher_competencies(
             "slug": item.slug,
             "title": item.title,
             "description": item.description,
+            "translation_en": item.translation_en or {},
             "indicators_json": item.indicators_json,
             "criteria_json": item.criteria_json,
         }

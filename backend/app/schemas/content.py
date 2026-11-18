@@ -7,6 +7,7 @@ from app.schemas.common import ORMModel
 
 
 class RefOut(ORMModel):
+    translation_en: dict[str, str] = {}
     id: uuid.UUID
     title: str
     slug: str
@@ -51,6 +52,7 @@ class AlgorithmCard(ORMModel):
     title: str
     title_en: str | None = None
     summary: str
+    translation_en: dict[str, str] = {}
     cover_image: str | None = None
     is_demo: bool = False
     status: str = "published"
@@ -66,6 +68,7 @@ class AlgorithmDetail(AlgorithmCard):
 
 
 class CompetencyCard(ORMModel):
+    translation_en: dict = {}
     id: uuid.UUID
     slug: str
     title: str
@@ -88,6 +91,7 @@ class LessonCard(ORMModel):
     slug: str
     title: str
     summary: str
+    translation_en: dict[str, str] = {}
     order_no: int
     duration_min: int
     is_demo: bool = False
@@ -106,6 +110,7 @@ class LessonDetail(LessonCard):
 
 
 class TaskOptionOut(BaseModel):
+    label_en: str = ""
     id: uuid.UUID
     label: str
     order_no: int
@@ -113,6 +118,7 @@ class TaskOptionOut(BaseModel):
 
 
 class TaskCard(ORMModel):
+    translation_en: dict = {}
     id: uuid.UUID
     slug: str
     title: str
@@ -138,6 +144,7 @@ class TaskDetail(TaskCard):
 
 
 class ProjectCard(ORMModel):
+    translation_en: dict = {}
     id: uuid.UUID
     slug: str
     title: str
@@ -162,6 +169,7 @@ class ProjectDetail(ProjectCard):
 
 
 class MatrixRow(BaseModel):
+    algorithm_title_en: str | None = None
     algorithm_id: uuid.UUID
     algorithm_title: str
     algorithm_slug: str

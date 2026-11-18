@@ -7,12 +7,18 @@ from app.schemas.assessment import AssessmentCard, QuestionStudentOut
 from app.schemas.common import ORMModel
 
 
+class AlgorithmEnglishIn(BaseModel):
+    summary: str = ""
+    body: str = ""
+
+
 class AlgorithmCreateIn(BaseModel):
     title: str = Field(min_length=2, max_length=200)
     slug: str | None = Field(default=None, max_length=120)
     title_en: str | None = Field(default=None, max_length=200)
     summary: str = ""
     body: str = ""
+    translation_en: AlgorithmEnglishIn = Field(default_factory=AlgorithmEnglishIn)
     cover_image: str | None = None
     status: str = Field(default="draft", pattern="^(draft|published|archived)$")
     sort_order: int = 0
@@ -25,13 +31,22 @@ class AlgorithmUpdateIn(BaseModel):
     title_en: str | None = Field(default=None, max_length=200)
     summary: str | None = None
     body: str | None = None
+    translation_en: AlgorithmEnglishIn | None = None
     cover_image: str | None = None
     status: str | None = Field(default=None, pattern="^(draft|published|archived)$")
     sort_order: int | None = None
     is_demo: bool | None = None
 
 
+class CompetencyEnglishIn(BaseModel):
+    title: str = ""
+    description: str = ""
+    indicators_json: list[str] = []
+    criteria_json: dict[str, str] = {}
+
+
 class CompetencyCreateIn(BaseModel):
+    translation_en: CompetencyEnglishIn = Field(default_factory=CompetencyEnglishIn)
     title: str = Field(min_length=2, max_length=200)
     slug: str | None = Field(default=None, max_length=120)
     description: str = ""
@@ -43,6 +58,7 @@ class CompetencyCreateIn(BaseModel):
 
 
 class CompetencyUpdateIn(BaseModel):
+    translation_en: CompetencyEnglishIn | None = None
     title: str | None = Field(default=None, min_length=2, max_length=200)
     slug: str | None = Field(default=None, max_length=120)
     description: str | None = None
@@ -53,6 +69,14 @@ class CompetencyUpdateIn(BaseModel):
     is_demo: bool | None = None
 
 
+class LessonEnglishIn(BaseModel):
+    title: str = Field(default="", max_length=250)
+    summary: str = ""
+    body: str = ""
+    goal: str = ""
+    reflection: str = ""
+
+
 class LessonCreateIn(BaseModel):
     title: str = Field(min_length=2, max_length=250)
     slug: str | None = Field(default=None, max_length=120)
@@ -61,6 +85,7 @@ class LessonCreateIn(BaseModel):
     body: str = ""
     goal: str = ""
     reflection: str = ""
+    translation_en: LessonEnglishIn = Field(default_factory=LessonEnglishIn)
     duration_min: int = Field(default=45, ge=1, le=600)
     order_no: int = Field(default=1, ge=1)
     competency_ids: list[uuid.UUID] = []
@@ -76,6 +101,7 @@ class LessonUpdateIn(BaseModel):
     body: str | None = None
     goal: str | None = None
     reflection: str | None = None
+    translation_en: LessonEnglishIn | None = None
     duration_min: int | None = Field(default=None, ge=1, le=600)
     order_no: int | None = Field(default=None, ge=1)
     competency_ids: list[uuid.UUID] | None = None
@@ -84,12 +110,22 @@ class LessonUpdateIn(BaseModel):
 
 
 class TaskOptionIn(BaseModel):
+    id: uuid.UUID | None = None
+    label_en: str = ""
     label: str = Field(min_length=1)
     is_correct: bool = False
     order_no: int = 1
 
 
+class TaskEnglishIn(BaseModel):
+    rubric_labels: list[str] = []
+    title: str = ""
+    instructions: str = ""
+    body: str = ""
+
+
 class TaskCreateIn(BaseModel):
+    translation_en: TaskEnglishIn = Field(default_factory=TaskEnglishIn)
     title: str = Field(min_length=2, max_length=250)
     slug: str | None = Field(default=None, max_length=120)
     lesson_id: uuid.UUID | None = None
@@ -110,6 +146,7 @@ class TaskCreateIn(BaseModel):
 
 
 class TaskUpdateIn(BaseModel):
+    translation_en: TaskEnglishIn | None = None
     title: str | None = Field(default=None, min_length=2, max_length=250)
     slug: str | None = Field(default=None, max_length=120)
     lesson_id: uuid.UUID | None = None
@@ -131,7 +168,21 @@ class TaskUpdateIn(BaseModel):
     is_demo: bool | None = None
 
 
+class ProjectEnglishIn(BaseModel):
+    rubric_labels: list[str] = []
+    title: str = ""
+    summary: str = ""
+    problem: str = ""
+    goal: str = ""
+    body: str = ""
+    expected_result: str = ""
+    steps_json: list[str] = []
+    materials_json: list[str] = []
+    tools_json: list[str] = []
+
+
 class ProjectCreateIn(BaseModel):
+    translation_en: ProjectEnglishIn = Field(default_factory=ProjectEnglishIn)
     title: str = Field(min_length=2, max_length=250)
     slug: str | None = Field(default=None, max_length=120)
     algorithm_id: uuid.UUID | None = None
@@ -151,6 +202,7 @@ class ProjectCreateIn(BaseModel):
 
 
 class ProjectUpdateIn(BaseModel):
+    translation_en: ProjectEnglishIn | None = None
     title: str | None = Field(default=None, min_length=2, max_length=250)
     slug: str | None = Field(default=None, max_length=120)
     algorithm_id: uuid.UUID | None = None

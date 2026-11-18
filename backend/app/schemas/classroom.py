@@ -119,6 +119,7 @@ class AssignmentOut(BaseModel):
     content_type: str
     content_id: uuid.UUID
     content_title: str
+    content_title_en: str | None = None
     content_slug: str | None = None
     due_at: datetime | None = None
     status: str
@@ -133,6 +134,13 @@ class AssignmentOut(BaseModel):
     max_score: int | None = None
 
 
+class AssignmentStudentStatus(BaseModel):
+    student_id: uuid.UUID
+    display_name: str
+    status: str
+    submission_id: uuid.UUID | None = None
+
+
 class SubmissionListOut(BaseModel):
     assignment_id: uuid.UUID
     content_title: str
@@ -140,3 +148,4 @@ class SubmissionListOut(BaseModel):
     submitted_count: int
     reviewed_count: int
     items: list[SubmissionOut]
+    students: list[AssignmentStudentStatus] = []

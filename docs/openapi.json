@@ -638,6 +638,17 @@
               ],
               "title": "Competency Id"
             }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(order|title|date)$",
+              "default": "order",
+              "title": "Sort"
+            }
           }
         ],
         "responses": {
@@ -866,6 +877,23 @@
             }
           },
           {
+            "name": "classroom_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Classroom Id"
+            }
+          },
+          {
             "name": "difficulty",
             "in": "query",
             "required": false,
@@ -1065,6 +1093,17 @@
                 }
               ],
               "title": "Competency Id"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(order|title|date)$",
+              "default": "order",
+              "title": "Sort"
             }
           }
         ],
@@ -1766,6 +1805,56 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AssignmentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assignments/{assignment_id}/start": {
+      "post": {
+        "tags": [
+          "classrooms"
+        ],
+        "summary": "Start Assignment",
+        "operationId": "start_assignment_api_v1_assignments__assignment_id__start_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Start Assignment Api V1 Assignments  Assignment Id  Start Post"
                 }
               }
             }
@@ -5173,6 +5262,14 @@
     "schemas": {
       "AlgorithmBrief": {
         "properties": {
+          "translation_en": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -5235,6 +5332,14 @@
           "summary": {
             "type": "string",
             "title": "Summary"
+          },
+          "translation_en": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
           },
           "cover_image": {
             "anyOf": [
@@ -5309,6 +5414,9 @@
             "title": "Body",
             "default": ""
           },
+          "translation_en": {
+            "$ref": "#/components/schemas/AlgorithmEnglishIn"
+          },
           "cover_image": {
             "anyOf": [
               {
@@ -5372,6 +5480,14 @@
           "summary": {
             "type": "string",
             "title": "Summary"
+          },
+          "translation_en": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
           },
           "cover_image": {
             "anyOf": [
@@ -5449,6 +5565,22 @@
         ],
         "title": "AlgorithmDetail"
       },
+      "AlgorithmEnglishIn": {
+        "properties": {
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "default": ""
+          },
+          "body": {
+            "type": "string",
+            "title": "Body",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "AlgorithmEnglishIn"
+      },
       "AlgorithmUpdateIn": {
         "properties": {
           "title": {
@@ -5509,6 +5641,16 @@
               }
             ],
             "title": "Body"
+          },
+          "translation_en": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlgorithmEnglishIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "cover_image": {
             "anyOf": [
@@ -5597,6 +5739,14 @@
       },
       "AssessmentCard": {
         "properties": {
+          "translation_en": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -5698,6 +5848,9 @@
       },
       "AssessmentCreateIn": {
         "properties": {
+          "translation_en": {
+            "$ref": "#/components/schemas/AssessmentEnglishIn"
+          },
           "name": {
             "type": "string",
             "maxLength": 250,
@@ -5787,8 +5940,34 @@
         ],
         "title": "AssessmentCreateIn"
       },
+      "AssessmentEnglishIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "instructions": {
+            "type": "string",
+            "title": "Instructions",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "AssessmentEnglishIn"
+      },
       "AssessmentQuestionIn": {
         "properties": {
+          "body_en": {
+            "type": "string",
+            "title": "Body En",
+            "default": ""
+          },
           "type": {
             "type": "string",
             "pattern": "^(single_choice|multiple_choice|open_text)$",
@@ -5810,6 +5989,25 @@
               }
             ],
             "title": "Competency Id"
+          },
+          "competency_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Competency Ids"
+          },
+          "competency_weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "propertyNames": {
+              "format": "uuid"
+            },
+            "type": "object",
+            "title": "Competency Weights"
           },
           "points": {
             "type": "integer",
@@ -5842,6 +6040,14 @@
       },
       "AssessmentStudentDetail": {
         "properties": {
+          "translation_en": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -5961,6 +6167,16 @@
       },
       "AssessmentUpdateIn": {
         "properties": {
+          "translation_en": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentEnglishIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "anyOf": [
               {
@@ -6199,6 +6415,17 @@
             "type": "string",
             "title": "Content Title"
           },
+          "content_title_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Title En"
+          },
           "content_slug": {
             "anyOf": [
               {
@@ -6315,6 +6542,42 @@
           "created_at"
         ],
         "title": "AssignmentOut"
+      },
+      "AssignmentStudentStatus": {
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Student Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "submission_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submission Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "student_id",
+          "display_name",
+          "status"
+        ],
+        "title": "AssignmentStudentStatus"
       },
       "AssignmentUpdateIn": {
         "properties": {
@@ -7053,6 +7316,17 @@
       },
       "ComparisonRow": {
         "properties": {
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En"
+          },
           "competency_id": {
             "type": "string",
             "format": "uuid",
@@ -7103,6 +7377,12 @@
       },
       "CompetencyCard": {
         "properties": {
+          "translation_en": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -7142,6 +7422,9 @@
       },
       "CompetencyCreateIn": {
         "properties": {
+          "translation_en": {
+            "$ref": "#/components/schemas/CompetencyEnglishIn"
+          },
           "title": {
             "type": "string",
             "maxLength": 200,
@@ -7202,6 +7485,12 @@
       },
       "CompetencyDetail": {
         "properties": {
+          "translation_en": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -7283,8 +7572,48 @@
         ],
         "title": "CompetencyDetail"
       },
+      "CompetencyEnglishIn": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "indicators_json": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Indicators Json",
+            "default": []
+          },
+          "criteria_json": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Criteria Json",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "title": "CompetencyEnglishIn"
+      },
       "CompetencyRef": {
         "properties": {
+          "translation_en": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -7309,6 +7638,17 @@
       },
       "CompetencyScoreOut": {
         "properties": {
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En"
+          },
           "competency_id": {
             "type": "string",
             "format": "uuid",
@@ -7370,6 +7710,16 @@
       },
       "CompetencyUpdateIn": {
         "properties": {
+          "translation_en": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompetencyEnglishIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "title": {
             "anyOf": [
               {
@@ -7641,6 +7991,14 @@
       },
       "LessonBrief": {
         "properties": {
+          "translation_en": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -7686,6 +8044,14 @@
           "summary": {
             "type": "string",
             "title": "Summary"
+          },
+          "translation_en": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
           },
           "order_no": {
             "type": "integer",
@@ -7792,6 +8158,9 @@
             "title": "Reflection",
             "default": ""
           },
+          "translation_en": {
+            "$ref": "#/components/schemas/LessonEnglishIn"
+          },
           "duration_min": {
             "type": "integer",
             "maximum": 600.0,
@@ -7850,6 +8219,14 @@
           "summary": {
             "type": "string",
             "title": "Summary"
+          },
+          "translation_en": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
           },
           "order_no": {
             "type": "integer",
@@ -7935,6 +8312,38 @@
         ],
         "title": "LessonDetail"
       },
+      "LessonEnglishIn": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 250,
+            "title": "Title",
+            "default": ""
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "default": ""
+          },
+          "body": {
+            "type": "string",
+            "title": "Body",
+            "default": ""
+          },
+          "goal": {
+            "type": "string",
+            "title": "Goal",
+            "default": ""
+          },
+          "reflection": {
+            "type": "string",
+            "title": "Reflection",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "LessonEnglishIn"
+      },
       "LessonUpdateIn": {
         "properties": {
           "title": {
@@ -8017,6 +8426,16 @@
               }
             ],
             "title": "Reflection"
+          },
+          "translation_en": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LessonEnglishIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "duration_min": {
             "anyOf": [
@@ -8125,6 +8544,17 @@
       },
       "MatrixRow": {
         "properties": {
+          "algorithm_title_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Algorithm Title En"
+          },
           "algorithm_id": {
             "type": "string",
             "format": "uuid",
@@ -8285,6 +8715,11 @@
       },
       "OptionPublic": {
         "properties": {
+          "label_en": {
+            "type": "string",
+            "title": "Label En",
+            "default": ""
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -8784,6 +9219,14 @@
       },
       "ProjectBrief": {
         "properties": {
+          "translation_en": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -8813,6 +9256,12 @@
       },
       "ProjectCard": {
         "properties": {
+          "translation_en": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -8870,6 +9319,9 @@
       },
       "ProjectCreateIn": {
         "properties": {
+          "translation_en": {
+            "$ref": "#/components/schemas/ProjectEnglishIn"
+          },
           "title": {
             "type": "string",
             "maxLength": 250,
@@ -8983,6 +9435,12 @@
       },
       "ProjectDetail": {
         "properties": {
+          "translation_en": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -9098,8 +9556,86 @@
         ],
         "title": "ProjectDetail"
       },
+      "ProjectEnglishIn": {
+        "properties": {
+          "rubric_labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Rubric Labels",
+            "default": []
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "default": ""
+          },
+          "problem": {
+            "type": "string",
+            "title": "Problem",
+            "default": ""
+          },
+          "goal": {
+            "type": "string",
+            "title": "Goal",
+            "default": ""
+          },
+          "body": {
+            "type": "string",
+            "title": "Body",
+            "default": ""
+          },
+          "expected_result": {
+            "type": "string",
+            "title": "Expected Result",
+            "default": ""
+          },
+          "steps_json": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Steps Json",
+            "default": []
+          },
+          "materials_json": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Materials Json",
+            "default": []
+          },
+          "tools_json": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tools Json",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "ProjectEnglishIn"
+      },
       "ProjectUpdateIn": {
         "properties": {
+          "translation_en": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectEnglishIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "title": {
             "anyOf": [
               {
@@ -9295,6 +9831,11 @@
       },
       "QuestionStudentOut": {
         "properties": {
+          "body_en": {
+            "type": "string",
+            "title": "Body En",
+            "default": ""
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -9323,6 +9864,23 @@
               }
             ],
             "title": "Competency Id"
+          },
+          "competency_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Competency Ids",
+            "default": []
+          },
+          "competency_weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Competency Weights",
+            "default": {}
           },
           "competency_title": {
             "anyOf": [
@@ -9866,6 +10424,14 @@
             },
             "type": "array",
             "title": "Items"
+          },
+          "students": {
+            "items": {
+              "$ref": "#/components/schemas/AssignmentStudentStatus"
+            },
+            "type": "array",
+            "title": "Students",
+            "default": []
           }
         },
         "type": "object",
@@ -10048,6 +10614,14 @@
       },
       "TaskBrief": {
         "properties": {
+          "translation_en": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -10082,6 +10656,12 @@
       },
       "TaskCard": {
         "properties": {
+          "translation_en": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -10164,6 +10744,9 @@
       },
       "TaskCreateIn": {
         "properties": {
+          "translation_en": {
+            "$ref": "#/components/schemas/TaskEnglishIn"
+          },
           "title": {
             "type": "string",
             "maxLength": 250,
@@ -10302,6 +10885,12 @@
       },
       "TaskDetail": {
         "properties": {
+          "translation_en": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Translation En",
+            "default": {}
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -10424,8 +11013,54 @@
         ],
         "title": "TaskDetail"
       },
+      "TaskEnglishIn": {
+        "properties": {
+          "rubric_labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Rubric Labels",
+            "default": []
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "instructions": {
+            "type": "string",
+            "title": "Instructions",
+            "default": ""
+          },
+          "body": {
+            "type": "string",
+            "title": "Body",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "TaskEnglishIn"
+      },
       "TaskOptionIn": {
         "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "label_en": {
+            "type": "string",
+            "title": "Label En",
+            "default": ""
+          },
           "label": {
             "type": "string",
             "minLength": 1,
@@ -10450,6 +11085,11 @@
       },
       "TaskOptionOut": {
         "properties": {
+          "label_en": {
+            "type": "string",
+            "title": "Label En",
+            "default": ""
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -10485,6 +11125,16 @@
       },
       "TaskUpdateIn": {
         "properties": {
+          "translation_en": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskEnglishIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "title": {
             "anyOf": [
               {
